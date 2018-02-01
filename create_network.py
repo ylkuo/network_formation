@@ -2,7 +2,9 @@ import networkx as nx
 import sqlite3
 
 from collections import defaultdict
+from copy import deepcopy
 from operator import itemgetter
+from time import strftime, strptime
 
 class CrunchbaseData(object):
     def __init__(self, db_path):
@@ -22,14 +24,14 @@ class CrunchbaseData(object):
            # create node and edge
            if i_link not in network:
                network.add_node(i_link)
+               network.node[i_link]['name'] = i_name
                network.node[i_link]['location'] = \
-                   {'name': i_name, 'country': i_country, 'state': i_state, \
-                    'region': i_region, 'city': i_city}
+                   {'country': i_country, 'state': i_state, 'region': i_region, 'city': i_city}
            if c_link not in network:
                network.add_node(c_link)
+               network.node[c_link]['name'] = c_name
                network.node[c_link]['location'] = \
-                   {'name': c_name, 'country': c_country, 'state': c_state, \
-                    'region': c_region, 'city': c_city}
+                   {'country': c_country, 'state': c_state, 'region': c_region, 'city': c_city}
            if 'category' not in network.node[i_link].keys():
                network.node[i_link]['category'] = defaultdict(int)
            if 'round_type' not in network.node[i_link].keys():
@@ -50,13 +52,44 @@ class CrunchbaseData(object):
         return network
 
     def convert_to_coinvest_network(self, in_network):
-        pass
+        out_network = nx.Graph()
+        for node in in_network.nodes:
+            in_edges = in_network.in_edges(node)
+            investors = [edge[0] for edge in in_edges]
+            if len(investors) < 2: continue
+            # add investor nodes
+            for investor in investors:
+                if investor in out_network: continue
+                out_network.add_node(investor)
+                for attr in in_network.node[investor].keys():
+                    out_network.node[investor][attr] = \
+                        deepcopy(in_network.node[investor][attr])
+            # add co-invest edges
+            invest_cat = in_network
+            for i1 in investors:
+                t1 = strptime(in_network[i1][node]['funded_at'], '%Y-%m-%d')
+                for i2 in investors:
+                    if i1 == i2: continue
+                    t2 = strptime(in_network[i1][node]['funded_at'], '%Y-%m-%d')
+                    if not out_network.has_edge(i1, i2):
+                        out_network.add_edge(i1, i2)
+                        out_network[i1][i2]['count'] = 0
+                        out_network[i1][i2]['time'] = dict()
+                    out_network[i1][i2]['count'] += 1
+                    if t1 > t2: ts = t1
+                    else: ts = t2
+                    out_network[i1][i2]['time'][node] = strftime('%Y-%m-%d', ts)
+        return out_network
 
 
 if __name__ == '__main__':
     cb_data = CrunchbaseData('data/crunchbase_2015.db')
     invest_network = cb_data.get_investment_network()
-    # get top investers
+    coinvest_network = cb_data.convert_to_coinvest_network(invest_network)
+    # get top co-investors
+    print(sorted(coinvest_network.edges(data='count'), \
+                 key=itemgetter(2), reverse=True)[:20])
+    # get top investors
     print(sorted(invest_network.out_degree(invest_network.nodes), \
-                 key=itemgetter(1),reverse=True)[:20])
+                 key=itemgetter(1), reverse=True)[:20])
 
