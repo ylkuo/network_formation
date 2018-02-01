@@ -76,9 +76,11 @@ class CrunchbaseData(object):
                         out_network[i1][i2]['count'] = 0
                         out_network[i1][i2]['time'] = dict()
                     out_network[i1][i2]['count'] += 1
-                    if t1 > t2: ts = t1
-                    else: ts = t2
-                    out_network[i1][i2]['time'][node] = strftime('%Y-%m-%d', ts)
+                    # add first co-investment time of a company
+                    if node not in out_network[i1][i2]['time'].keys():
+                        if t1 > t2: ts = t1
+                        else: ts = t2
+                        out_network[i1][i2]['time'][node] = strftime('%Y-%m-%d', ts)
         return out_network
 
 
