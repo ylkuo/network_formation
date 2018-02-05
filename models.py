@@ -28,10 +28,11 @@ class network_model():
         Network structure is initialized here.
         It can be supplied as a parameter in the params dictionary or it can be initilized to the empty graph.
         """
+        assert not self.pairwise_stable, 'network is already pairwise statble before initiation'
         if 'network' in self.fixed_params:
             self.params['size'] = NX.number_of_nodes(self.params['network'])
         else:
-            self.params['size'] = 50  # np.random.randint(50, 500)
+            self.params['size'] = 20  # np.random.randint(50, 500)
             self.params['network'] = NX.empty_graph(self.params['size'])
 
         if 'input_type' not in self.fixed_params:
@@ -90,6 +91,8 @@ class network_model():
             avg_clustering_timeseries = np.sum(all_nodes_clustering , 0) / self.params['size']
             df = pd.DataFrame(avg_clustering_timeseries)
 
+        self.pairwise_stable = False
+
         return df
 
     def plot_time_series(self):
@@ -119,8 +122,11 @@ class network_model():
 
     def genTorchSample(self):
         df = self.generateTimeseries()
+        #print(df)
+        #print(df.values[:, 0:self.params['feature_length']])
         data = torch.FloatTensor(df.values[:, 0:self.params['feature_length']])
-        label_of_data = torch.LongTensor([self.params['theta_2']])
+        label = int(self.params['theta_2']>0)
+        label_of_data = torch.LongTensor([label])
         return label_of_data, data
 
     def genTorchDataset(self, dataset_size=1000):
@@ -158,11 +164,11 @@ class utility_model(network_model):
         if 'theta_1' not in self.fixed_params:
             self.params['theta_1'] = np.random.normal(0, 1)
         if 'theta_2' not in self.fixed_params:
-            self.params['theta_2'] = np.random.normal(0, 1)
+            self.params['theta_2'] = np.random.normal(0, 1)#RD.choice([-1.0,1.0])#
         if 'theta_3' not in self.fixed_params:
             self.params['theta_3'] = np.random.normal(0, 1)
         if 'sparsity' not in self.fixed_params:
-            self.params['sparsity'] = np.sqrt(8 / self.params['size'])
+            self.params['sparsity'] = 4*np.sqrt(8 / self.params['size'])
 
 
     def successful_edge_formation(self,candidate_edge):
@@ -172,6 +178,6 @@ class utility_model(network_model):
         edge_value = self.params['theta_0'] + self.params['theta_1']* \
                                               (self.params['network'].node[candidate_edge[0]]['attribute'] + \
                                                self.params['network'].node[candidate_edge[1]]['attribute']) +  \
-                     self.params['theta_2']*(len(list_common_neighbirs)) + self.potential_edge_attributes[candidate_edge] - \
+                     self.params['theta_2']*(1.0*(len(list_common_neighbirs)>0)) + self.potential_edge_attributes[candidate_edge] - \
                      (1/self.params['sparsity'])*distance
         return (edge_value > 0)
