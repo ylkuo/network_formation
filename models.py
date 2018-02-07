@@ -129,11 +129,17 @@ class network_model():
         label_of_data = torch.LongTensor([label])
         return label_of_data, data
 
-    def genTorchDataset(self, dataset_size=1000):
-        simulation_results = []
-        for iter in range(dataset_size):
-            label_of_data, data = self.genTorchSample()
-            simulation_results.append((label_of_data, data))
+    def genTorchDataset(self, dataset_size=1000,filename = 'dataset.pkl', LOAD=False, SAVE = False ):
+        if LOAD:
+            simulation_results = pickle.load(open('./data/'+filename,'rb'))
+        else:
+            simulation_results = []
+            for iter in range(dataset_size):
+                label_of_data, data = self.genTorchSample()
+                simulation_results.append((label_of_data, data))
+            if SAVE:
+                pickle.dump(simulation_results, open('./data/'+filename, 'wb'))
+
         return simulation_results
 
     def set_random_params(self):
