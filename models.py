@@ -142,6 +142,8 @@ class network_model():
 
         return simulation_results
 
+
+
     def set_random_params(self):
         r"""
         Sets the parameters of the utility model.
