@@ -7,11 +7,11 @@ import numpy as np
 import random as RD
 import networkx as NX
 import matplotlib.pyplot as plt
+import pickle
 
 
 RD.seed()
 np.random.seed()
-
 
 SENTINEL = object()
 
@@ -19,7 +19,7 @@ SENTINEL = object()
 class network_model():
 
     def __init__(self,params):
-        self.params = params
+        self.params = copy.deepcopy(params)
         self.fixed_params = copy.deepcopy(params)
         self.pairwise_stable = False
 
@@ -45,8 +45,6 @@ class network_model():
                 self.params['feature_length'] = self.params['size']
             else:
                 assert False, 'mishandled type for training data'
-
-
 
     def init_network_attributes(self):
         r"""
@@ -107,8 +105,6 @@ class network_model():
             df['new links added'] = pd.Series(list(range(len(df))))
             df.plot(x='new links added', y='average clustering')
             plt.show()
-
-
 
     def step(self):
         candidate_edges = list(NX.non_edges(self.params['network']))

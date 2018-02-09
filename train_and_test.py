@@ -5,26 +5,16 @@ from models import *
 
 RD.seed()
 
-
-
 if __name__ == '__main__':
 
-
-    params = {
-        'theta_0': 0,  # -0.5,
-        'theta_1': 0.25,  # populationSize,
-        # 'theta_2': 0.525,
-        'theta_3': 1,
-    }
-
-    dynamics = utility_model(params)
+    dynamics = utility_model(settings.params)
 
     model = RNN()
 
     model.empty_losses()
 
     print('pretraining performance on the traning set')
-    training_sample = dynamics.genTorchDataset(200)
+    training_sample = dynamics.genTorchDataset(1)
     print(100 * model.evaluateAveragePerformance(training_sample))
 
     print('doTraining on the traning set')
@@ -40,5 +30,5 @@ if __name__ == '__main__':
 
     print('performance on Test set after training')
 
-    test_sample = dynamics.genTorchDataset(200)
+    test_sample = dynamics.genTorchDataset(1)
     print(100 * model.evaluateAveragePerformance(test_sample))

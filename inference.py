@@ -15,16 +15,11 @@ import pickle
 import copy
 
 import random
-from models import  *
+from models import *
+
+import settings
 
 random.seed()
-
-n_hidden = 16  # number of units in each layer of the recurrent unit
-NUM_LAYERS = 3  # numer of layers in each recurrent unit
-BATCH_SIZE = 4
-OUTPUT_SIZE = 2
-number_of_features = 1 # just fractions
-
 
 def timeSince(since):
     now = time.time()
@@ -34,7 +29,7 @@ def timeSince(since):
     return '%dm %ds' % (m, s)
 
 class RNN(nn.Module):
-    def __init__(self, input_size = number_of_features , hidden_size = n_hidden, num_layers = NUM_LAYERS):
+    def __init__(self, input_size = settings.number_of_features , hidden_size = settings.n_hidden, num_layers = settings.NUM_LAYERS):
         super(RNN, self).__init__()
         self.softmax = nn.Softmax()
         self.hidden_size = hidden_size
@@ -47,7 +42,7 @@ class RNN(nn.Module):
             batch_first=False,
         )#batch_first=False the first dimension is Time, the second dimension is Batch
 
-        self.out_type = nn.Linear(hidden_size, OUTPUT_SIZE)
+        self.out_type = nn.Linear(hidden_size, settings.OUTPUT_SIZE)
         self.training_losses = []
 
     def forward(self, input, hidden):
