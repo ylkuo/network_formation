@@ -1,10 +1,15 @@
+import matplotlib
+matplotlib.use('TkAgg')
+
 import networkx as nx
+import pylab
 import sqlite3
 
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from dateutil import relativedelta
+from formation_simulator import pycxsimulator
 from operator import itemgetter
 from time import mktime, strftime, strptime
 
@@ -14,6 +19,34 @@ def month_year_iter(start_month, start_year, end_month, end_year):
     for ym in range(ym_start, ym_end):
         y, m = divmod(ym, 12)
         yield y, m+1
+
+def init_viz():
+    global positions, time, time_networks
+    time = 0
+    positions = nx.random_layout(list(time_networks.values())[time])
+    # set position to the network
+    for t in time_networks.keys():
+        for name, pos in positions.items():
+            time_networks[t].node[name]['position'] = pos
+
+def draw():
+    global positions, time, time_networks
+    pylab.cla()
+    nx.draw(list(time_networks.values())[time],
+            pos=positions,
+            node_color=[0 for i in list(time_networks.values())[time].nodes()],
+            with_labels=False,
+            edge_color='c',
+            cmap=pylab.cm.YlOrRd,
+            vmin=0,
+            vmax=1)
+    pylab.axis('image')
+    pylab.title('t = ' + str(time))
+
+def step_viz():
+    global time
+    if time < len(time_networks) - 1:
+        time += 1
 
 class CrunchbaseData(object):
     def __init__(self, db_path):
@@ -109,6 +142,7 @@ class CrunchbaseData(object):
                 elif t > max_time: max_time = t
         # generate time series by month
         time_series = dict()
+        prev_network = network
         for year, month in month_year_iter(min_time[1], min_time[0], max_time[1], max_time[0]):
             time_str = str(year) + '-' + str(month)
             start_time = strptime(time_str + '-01', '%Y-%m-%d')
@@ -117,8 +151,14 @@ class CrunchbaseData(object):
             end_time = end_time.timetuple()
             edges = [(i1, i2) for i1, i2 in network.edges()
                      for c, c_t in network[i1][i2]['time'].items()
-                     if strptime(c_t, '%Y-%m-%d') < end_time]
-            time_series[time_str] = network.edge_subgraph(edges).copy()
+                     if strptime(c_t, '%Y-%m-%d') >= end_time]
+            new_network = network.copy()
+            new_network.remove_edges_from(edges)
+            # exclude network that doesn't change or is empty
+            if len(new_network.edges()) > 0 and \
+                len(prev_network.edges()) != len(new_network.edges()):
+                time_series[time_str] = new_network
+                prev_network = time_series[time_str]
         return time_series
 
 
@@ -134,8 +174,12 @@ if __name__ == '__main__':
                  key=itemgetter(1), reverse=True)[:20])
     # get time series for top coinvestors
     top_coinvestor = sorted(coinvest_network.degree(coinvest_network.nodes),
-                            key=itemgetter(1), reverse=True)[:20]
+                            key=itemgetter(1), reverse=True)[:10]
     top_coinvestor = [inv[0] for inv in top_coinvestor]
     time_series = cb_data.generate_time_series(coinvest_network,
                                                top_coinvestor)
+    # visualize time series
+    global time_networks
+    time_networks = time_series
+    pycxsimulator.GUI().start(func=[init_viz, draw, step_viz])
 
