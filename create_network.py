@@ -21,21 +21,25 @@ def month_year_iter(start_month, start_year, end_month, end_year):
         yield y, m+1
 
 def init_viz():
-    global positions, time, time_networks
+    global positions, time, time_networks, labeldict
     time = 0
+    labeldict = {}
     positions = nx.random_layout(time_networks[time])
+    for node in time_networks[time].nodes():
+        labeldict[node] = node.replace('/organization/', '').replace('/person/', '')
     # set position to the network
     for t in range(len(time_networks)):
         for name, pos in positions.items():
             time_networks[t].node[name]['position'] = pos
 
 def draw():
-    global positions, time, time_networks
+    global positions, time, time_networks, labeldict
     pylab.cla()
     nx.draw(time_networks[time],
             pos=positions,
             node_color=[0 for i in time_networks[time].nodes()],
-            with_labels=False,
+            labels=labeldict,
+            with_labels=True,
             edge_color='c',
             cmap=pylab.cm.YlOrRd,
             vmin=0,
