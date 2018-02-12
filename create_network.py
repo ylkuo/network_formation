@@ -116,7 +116,8 @@ class CrunchbaseData(object):
                 t1 = strptime(in_network[i1][node]['funded_at'], '%Y-%m-%d')
                 for i2 in investors:
                     if i1 == i2: continue
-                    t2 = strptime(in_network[i1][node]['funded_at'], '%Y-%m-%d')
+                    t2 = strptime(in_network[i2][node]['funded_at'], '%Y-%m-%d')
+                    if t1 != t2: continue
                     if not out_network.has_edge(i1, i2):
                         out_network.add_edge(i1, i2)
                         out_network[i1][i2]['count'] = 0
@@ -124,9 +125,7 @@ class CrunchbaseData(object):
                     out_network[i1][i2]['count'] += 1
                     # add first co-investment time of a company
                     if node not in out_network[i1][i2]['time'].keys():
-                        if t1 > t2: ts = t1
-                        else: ts = t2
-                        out_network[i1][i2]['time'][node] = strftime('%Y-%m-%d', ts)
+                        out_network[i1][i2]['time'][node] = strftime('%Y-%m-%d', t1)
         return out_network
 
     def generate_time_series(self, in_network, filter_by_nodes=None):
