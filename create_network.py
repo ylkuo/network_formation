@@ -23,18 +23,18 @@ def month_year_iter(start_month, start_year, end_month, end_year):
 def init_viz():
     global positions, time, time_networks
     time = 0
-    positions = nx.random_layout(list(time_networks.values())[time])
+    positions = nx.random_layout(time_networks[time])
     # set position to the network
-    for t in time_networks.keys():
+    for t in range(len(time_networks)):
         for name, pos in positions.items():
             time_networks[t].node[name]['position'] = pos
 
 def draw():
     global positions, time, time_networks
     pylab.cla()
-    nx.draw(list(time_networks.values())[time],
+    nx.draw(time_networks[time],
             pos=positions,
-            node_color=[0 for i in list(time_networks.values())[time].nodes()],
+            node_color=[0 for i in time_networks[time].nodes()],
             with_labels=False,
             edge_color='c',
             cmap=pylab.cm.YlOrRd,
@@ -141,7 +141,7 @@ class CrunchbaseData(object):
                 elif t < min_time: min_time = t
                 elif t > max_time: max_time = t
         # generate time series by month
-        time_series = dict()
+        time_series = []
         prev_network = network
         for year, month in month_year_iter(min_time[1], min_time[0], max_time[1], max_time[0]):
             time_str = str(year) + '-' + str(month)
@@ -155,10 +155,21 @@ class CrunchbaseData(object):
             new_network = network.copy()
             new_network.remove_edges_from(edges)
             # exclude network that doesn't change or is empty
-            if len(new_network.edges()) > 0 and \
-                len(prev_network.edges()) != len(new_network.edges()):
-                time_series[time_str] = new_network
-                prev_network = time_series[time_str]
+            diff = len(new_network.edges()) - len(prev_network.edges())
+            if len(new_network.edges()) == 0 or diff == 0:
+                continue
+            # interpolate the changes
+            if diff == 1:
+                time_series.append(new_network)
+            else:
+                diff_edges = list(new_network.edges() - prev_network.edges())
+                inter_networks = [new_network]
+                for i in range(diff-1):
+                    inter_network = inter_networks[0].copy()
+                    inter_network.remove_edges_from([diff_edges[i]])
+                    inter_networks.insert(0, inter_network)
+                time_series.extend(inter_networks)
+            prev_network = time_series[-1]
         return time_series
 
 
