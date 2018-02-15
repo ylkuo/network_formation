@@ -155,15 +155,19 @@ class CrunchbaseData(object):
             start_time = start_time.timetuple()
             edges = []
             for i1, i2 in network.edges():
+                if prev_network.has_edge(i1, i2): continue
                 coinvest_times = 0
+                end_ct = start_time
                 for c, c_t in network[i1][i2]['time'].items():
                     c_t = strptime(c_t, '%Y-%m-%d')
                     if c_t >= start_time and c_t < end_time:
                         coinvest_times += 1
-                if coinvest_times >= min_coinvest: edges.append((i1, i2))
+                        if c_t > end_ct: end_ct = c_t
+                if coinvest_times >= min_coinvest: edges.append((i1, i2, end_ct))
+            edges = sorted(edges, key=itemgetter(2))
             new_network = prev_network.copy()
             if len(edges) > 0:
-                new_network.add_edges_from(edges)
+                new_network.add_edges_from((i1, i2) for i1, i2, ct in edges)
             # exclude network that doesn't change or is empty
             diff = len(new_network.edges()) - len(prev_network.edges())
             if len(new_network.edges()) == 0 or diff == 0:
