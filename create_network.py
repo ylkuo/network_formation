@@ -128,7 +128,7 @@ class CrunchbaseData(object):
                         out_network[i1][i2]['time'][node] = strftime('%Y-%m-%d', t1)
         return out_network
 
-    def generate_time_series(self, in_network, filter_by_nodes=None):
+    def generate_time_series(self, in_network, min_coinvest=3, dt=1, filter_by_nodes=None):
         if filter_by_nodes is not None:
             network = in_network.subgraph(filter_by_nodes)
         else:
@@ -145,18 +145,25 @@ class CrunchbaseData(object):
                 elif t > max_time: max_time = t
         # generate time series by month
         time_series = []
-        prev_network = network
+        prev_network = network.copy()
+        prev_network.remove_edges_from(network.edges())
         for year, month in month_year_iter(min_time[1], min_time[0], max_time[1], max_time[0]):
             time_str = str(year) + '-' + str(month)
-            start_time = strptime(time_str + '-01', '%Y-%m-%d')
-            end_time = datetime.fromtimestamp(mktime(start_time)) + \
-                relativedelta.relativedelta(months=1)
-            end_time = end_time.timetuple()
-            edges = [(i1, i2) for i1, i2 in network.edges()
-                     for c, c_t in network[i1][i2]['time'].items()
-                     if strptime(c_t, '%Y-%m-%d') >= end_time]
-            new_network = network.copy()
-            new_network.remove_edges_from(edges)
+            end_time = strptime(time_str + '-01', '%Y-%m-%d')
+            start_time = datetime.fromtimestamp(mktime(end_time)) - \
+                relativedelta.relativedelta(months=dt)
+            start_time = start_time.timetuple()
+            edges = []
+            for i1, i2 in network.edges():
+                coinvest_times = 0
+                for c, c_t in network[i1][i2]['time'].items():
+                    c_t = strptime(c_t, '%Y-%m-%d')
+                    if c_t >= start_time and c_t < end_time:
+                        coinvest_times += 1
+                if coinvest_times >= min_coinvest: edges.append((i1, i2))
+            new_network = prev_network.copy()
+            if len(edges) > 0:
+                new_network.add_edges_from(edges)
             # exclude network that doesn't change or is empty
             diff = len(new_network.edges()) - len(prev_network.edges())
             if len(new_network.edges()) == 0 or diff == 0:
@@ -190,8 +197,9 @@ if __name__ == '__main__':
     top_coinvestor = sorted(coinvest_network.degree(coinvest_network.nodes),
                             key=itemgetter(1), reverse=True)[:10]
     top_coinvestor = [inv[0] for inv in top_coinvestor]
-    time_series = cb_data.generate_time_series(coinvest_network,
+    time_series = cb_data.generate_time_series(coinvest_network, 2, 1,
                                                top_coinvestor)
+    print(len(time_series))
     # visualize time series
     global time_networks
     time_networks = time_series
