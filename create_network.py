@@ -64,6 +64,7 @@ class CrunchbaseData(object):
     def get_investment_network(self):
         results = self._get_data_from_table('investments', '*')
         network = nx.DiGraph()
+        all_categories = defaultdict(int)
         for c_link, c_name, c_cat_list, c_country, c_state, c_region, c_city, \
             i_link, i_name, i_country, i_state, i_region, i_city, \
             r_link, r_type, r_code, funded_at, raised_usd in results:
@@ -95,7 +96,8 @@ class CrunchbaseData(object):
                categories = c_cat_list.split('|')
                for cat in categories:
                    network.node[i_link]['category'][cat] += 1
-        return network
+                   all_categories[cat] += 1
+        return network, all_categories
 
     def convert_to_coinvest_network(self, in_network):
         out_network = nx.Graph()
@@ -189,7 +191,7 @@ class CrunchbaseData(object):
 
 if __name__ == '__main__':
     cb_data = CrunchbaseData('data/crunchbase_2015.db')
-    invest_network = cb_data.get_investment_network()
+    invest_network, categories = cb_data.get_investment_network()
     coinvest_network = cb_data.convert_to_coinvest_network(invest_network)
     # get top co-investors
     print(sorted(coinvest_network.edges(data='count'),
@@ -204,6 +206,10 @@ if __name__ == '__main__':
     time_series = cb_data.generate_time_series(coinvest_network, 2, 1,
                                                top_coinvestor)
     print(len(time_series))
+    # get top categories
+    top_categories = sorted(categories.items(), key=itemgetter(1), reverse=True)[:100]
+    top_categories = [cat for cat, _ in top_categories]
+    print(top_categories)
     # visualize time series
     global time_networks
     time_networks = time_series
