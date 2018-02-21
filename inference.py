@@ -1,5 +1,9 @@
 # RNN for Network Formation Inference
+
 import torch.nn as nn
+# If you use conda please install pytorch using "conda install -c anaconda pytorch" this installs torch v0.3.0
+# as of 2/13/2018. If you use "conda install pytorch-cpu torchvision -c pytorch" a different torch version (0.3.1)
+# is installed and there would be some error.
 from torch.autograd import Variable
 import torch.nn.functional as F
 import time
@@ -28,6 +32,7 @@ def timeSince(since):
     s -= m * 60
     return '%dm %ds' % (m, s)
 
+
 class RNN(nn.Module):
     def __init__(self, input_size = settings.number_of_features , hidden_size = settings.n_hidden, num_layers = settings.NUM_LAYERS):
         super(RNN, self).__init__()
@@ -40,7 +45,7 @@ class RNN(nn.Module):
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=False,
-        )#batch_first=False the first dimension is Time, the second dimension is Batch
+        )  # batch_first=False the first dimension is Time, the second dimension is Batch
 
         self.out_type = nn.Linear(hidden_size, settings.OUTPUT_SIZE)
         self.training_losses = []
@@ -111,8 +116,6 @@ class RNN(nn.Module):
 
     def empty_losses(self):
         self.training_losses = []
-
-
 
     def doTraining(self, dataset, n_iters  = SENTINEL , batch_size=4, window_length_loss=64 , verbose = False ,
                    save = False , file_name = 'model.pkl'):

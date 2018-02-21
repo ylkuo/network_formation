@@ -3,6 +3,7 @@ formation_simulator/case_2/
 formation_simulator/case_3/
 .idea/
 data/
+crunchbase_analysis/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

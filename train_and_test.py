@@ -14,8 +14,10 @@ if __name__ == '__main__':
     model.empty_losses()
 
     print('pretraining performance on the traning set')
-    training_sample = dynamics.genTorchDataset(1)
+    training_sample = dynamics.genTorchDataset(200)
     print(100 * model.evaluateAveragePerformance(training_sample))
+
+    print(training_sample)
 
     print('doTraining on the traning set')
 
@@ -25,10 +27,10 @@ if __name__ == '__main__':
     print(100 * model.evaluateAveragePerformance(training_sample))
     model.plot_losses()
     model.save_losses()
-    print(model.training_losses)
+    # print(model.training_losses)
 
 
     print('performance on Test set after training')
 
-    test_sample = dynamics.genTorchDataset(1)
+    test_sample = dynamics.genTorchDataset(100)
     print(100 * model.evaluateAveragePerformance(test_sample))

@@ -168,9 +168,9 @@ class utility_model(network_model):
         if 'theta_1' not in self.fixed_params:
             self.params['theta_1'] = np.random.normal(0, 1)
         if 'theta_2' not in self.fixed_params:
-            self.params['theta_2'] = np.random.normal(0, 1)#RD.choice([-1.0,1.0])#
+            self.params['theta_2'] = RD.choice([0, 2.0])  # np.random.normal(0, 1)#
         if 'theta_3' not in self.fixed_params:
-            self.params['theta_3'] = np.random.normal(0, 1)
+            self.params['theta_3'] = 1  # np.random.normal(0, 1)
         if 'sparsity' not in self.fixed_params:
             self.params['sparsity'] = 4*np.sqrt(8 / self.params['size'])
 
