@@ -190,6 +190,48 @@ class CrunchbaseData(object):
             prev_network = time_series[-1]
         return time_series
 
+    def generate_time_series_sliding_window(self, in_network, start='2008-01-01', end='2015-12-31',
+                                            min_coinvest=3, window_day=30, filter_by_nodes=None):
+        if filter_by_nodes is not None:
+            network = in_network.subgraph(filter_by_nodes)
+        else:
+            network = in_network
+        # filter by the max and min time in this network
+        min_time = strptime(start, '%Y-%m-%d')
+        max_time = strptime(end, '%Y-%m-%d')
+        investments = []
+        for i1, i2 in network.edges():
+            for c, c_t in network[i1][i2]['time'].items():
+                t = strptime(c_t, '%Y-%m-%d')
+                if t < min_time: continue
+                if t > max_time: continue
+                investments.append((i1, i2, t, c, datetime.strptime(c_t, "%Y-%m-%d")))
+        # sort by time
+        investments_by_time = sorted(investments, key=itemgetter(2))
+        # generate time series by window
+        time_series = []
+        prev_network = network.copy()
+        prev_network.remove_edges_from(network.edges())
+        investment_in_window = []
+        for investment in investments_by_time:
+            #print('new: ', investment)
+            while len(investment_in_window) > 0 and \
+                abs((investment[4] - investment_in_window[0][4]).days) > window_day:
+                #print('delete: ', investment_in_window[0])
+                del investment_in_window[0]
+            i1, i2, t, c, c_t = investment
+            investment_in_window.append(investment)
+            coinvest_times = 0
+            for coinvest in investment_in_window:
+                if coinvest[0] == i1 and coinvest[1] == i2:
+                    coinvest_times += 1
+            if prev_network.has_edge(i1, i2): continue
+            if coinvest_times < min_coinvest: continue
+            new_network = prev_network.copy()
+            new_network.add_edges_from([(i1, i2)])
+            time_series.append(new_network)
+            prev_network = time_series[-1]
+        return time_series
 
 if __name__ == '__main__':
     cb_data = CrunchbaseData('data/crunchbase_2015.db')
@@ -205,11 +247,18 @@ if __name__ == '__main__':
     top_coinvestor = sorted(coinvest_network.degree(coinvest_network.nodes),
                             key=itemgetter(1), reverse=True)[:20]
     top_coinvestor = [inv[0] for inv in top_coinvestor]
-    time_series = cb_data.generate_time_series(coinvest_network, 2, 1,
-                                               top_coinvestor)
-    print(len(time_series))
+    # Great recession: start='2007-12-01', end='2009-06-30'
+    # All: start='1988-01-01', end='2015-12-31'
+    time_series_by_window = \
+        cb_data.generate_time_series_sliding_window(coinvest_network, \
+            start='2007-12-01', end='2009-06-30', min_coinvest=1, window_day=60,
+            filter_by_nodes=top_coinvestor)
+    pickle.dump(time_series_sliding, open('./data/' + 'observed_time_series_sliding.pkl', 'wb'))
+    #time_series = cb_data.generate_time_series(coinvest_network, 2, 1,
+    #                                           top_coinvestor)
+    #print(len(time_series))
 
-    pickle.dump(time_series, open('./data/' + 'observed_time_series.pkl', 'wb'))
+    #pickle.dump(time_series, open('./data/' + 'observed_time_series.pkl', 'wb'))
     # get top categories
     top_categories = sorted(categories.items(), key=itemgetter(1), reverse=True)[:100]
     top_categories = [cat for cat, _ in top_categories]
@@ -217,6 +266,6 @@ if __name__ == '__main__':
     pickle.dump(top_categories, open('./data/' + 'top_categories.pkl', 'wb'))
     # visualize time series
     global time_networks
-    time_networks = time_series
+    time_networks = time_series_by_window
     pycxsimulator.GUI().start(func=[init_viz, draw, step_viz])
 
