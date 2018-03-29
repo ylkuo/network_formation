@@ -19,6 +19,9 @@ import random as RD
 
 import pylab
 
+pylab.rc('text', usetex=True)
+pylab.rc('font', family='serif')
+
 import pycxsimulator
 
 import networkx as nx
@@ -27,34 +30,46 @@ import numpy as np
 
 RD.seed()
 
+# CATEGORY = 'E-Commerce'
+CATEGORY = 'Software'
+# CATEGORY = 'Security'
+
 def init_viz():
     global positions, time, time_networks, labeldict
     time = 0
     labeldict = {}
     positions = process_cruchbase_attributes(time_networks)
+    # print(time_networks[time].nodes())#remove_nodes_from(['/organization/intel-capital'])
     for node in time_networks[time].nodes():
         labeldict[node] = node.replace('/organization/', '').replace('/person/', '')
+        if node == '/organization/intel-capital':
+            labeldict[node] = ''
+
     # set position to the network
     for t in range(len(time_networks)):
         for name, pos in positions.items():
             time_networks[t].node[name]['position'] = pos
 
+
 def draw():
     global positions, time, time_networks, labeldict
     pylab.cla()
+    time_networks[time].remove_nodes_from(['/organization/intel-capital'])
+    # print(time_networks[time].nodes())
     nx.draw(time_networks[time],
             pos=positions,
-            node_color=[0 for i in time_networks[time].nodes()],
+            node_color=[0.5 for i in time_networks[time].nodes()],
             labels=labeldict,
             with_labels=True,
             edge_color='c',
-            cmap=pylab.cm.YlOrRd,
+            cmap=pylab.cm.YlOrRd,#YlOrRd
             vmin=0,
             vmax=1)
     # pylab.axis('image')
     pylab.axis('on')
+    pylab.xlim([200, 4300])
     pylab.xlabel('Risk Attitude')
-    pylab.ylabel('E-Commerce Investments (10x)')
+    pylab.ylabel(CATEGORY+' Investments (10x)')
     pylab.title('t = ' + str(time))
 
 def step_viz():
@@ -74,7 +89,7 @@ def process_cruchbase_attributes(network_timeseries):
     for i in network_timeseries[0].nodes():
         # print(network_timeseries[0].node[i]['category']['Software'])
         print(network_timeseries[0].node[i]['category'])
-        interest_profile[i] = network_timeseries[0].node[i]['category']['E-Commerce']
+        interest_profile[i] = network_timeseries[0].node[i]['category'][CATEGORY]
 
         # ratio of investment in software
         # net = 0
@@ -100,8 +115,9 @@ def process_cruchbase_attributes(network_timeseries):
 
 if __name__ == '__main__':
 
-    network_timeseries = pickle.load(open('./data/'+ 'observed_time_series.pkl', 'rb'))
+    # network_timeseries = pickle.load(open('./data/'+ 'observed_time_series_top9.pkl', 'rb'))
     # visualize time series
+    network_timeseries = pickle.load(open('./data/' + 'observed_time_series_sliding_31day_recession_min2.pkl', 'rb'))
     global time_networks
     time_networks = network_timeseries
     pycxsimulator.GUI().start(func=[init_viz, draw, step_viz])

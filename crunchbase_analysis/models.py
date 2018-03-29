@@ -102,9 +102,9 @@ class NetworkModel:
     def plot_time_series(self):
         df = self.generate_time_series()
         if self.params['input_type'] == 'transitivity':
-            df.columns = ['transitivity (global clustering coeficient)']
+            df.columns = ['transitivity (global clustering coefficient)']
             df['new links added'] = pd.Series(list(range(len(df))))
-            df.plot(x='new links added', y='transitivity (global clustering coeficient)')
+            df.plot(x='new links added', y='transitivity (global clustering coefficient)')
             plt.show()
         elif self.params['input_type'] == 'avg_clustering':
             df.columns = ['average clustering']

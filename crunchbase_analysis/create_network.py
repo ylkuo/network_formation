@@ -249,11 +249,11 @@ if __name__ == '__main__':
     top_coinvestor = [inv[0] for inv in top_coinvestor]
     # Great recession: start='2007-12-01', end='2009-06-30'
     # All: start='1988-01-01', end='2015-12-31'
-    time_series_by_window = \
+    time_series_sliding = \
         cb_data.generate_time_series_sliding_window(coinvest_network, \
-            start='2007-12-01', end='2009-06-30', min_coinvest=1, window_day=60,
+            start='2011-01-01', end='2015-12-31', min_coinvest=1, window_day=31,
             filter_by_nodes=top_coinvestor)
-    pickle.dump(time_series_sliding, open('./data/' + 'observed_time_series_sliding.pkl', 'wb'))
+    pickle.dump(time_series_sliding, open('./data/' + 'observed_time_series_sliding_31day_recent_2011_2015_min1.pkl', 'wb'))
     #time_series = cb_data.generate_time_series(coinvest_network, 2, 1,
     #                                           top_coinvestor)
     #print(len(time_series))
@@ -266,6 +266,6 @@ if __name__ == '__main__':
     pickle.dump(top_categories, open('./data/' + 'top_categories.pkl', 'wb'))
     # visualize time series
     global time_networks
-    time_networks = time_series_by_window
+    time_networks = time_series_sliding
     pycxsimulator.GUI().start(func=[init_viz, draw, step_viz])
 

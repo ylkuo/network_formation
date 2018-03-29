@@ -47,9 +47,10 @@ if __name__ == '__main__':
     training_sample2 = dynamics.gen_torch_data_set(LOAD=True, filename='crunchbase_simulated_dataset4_500.pkl')
     training_sample3 = dynamics.gen_torch_data_set(LOAD=True, filename='crunchbase_simulated_dataset5_500.pkl')
     training_sample = training_sample0 + training_sample1 + training_sample2 + training_sample3
-    print(100 * model.evaluateAveragePerformance(training_sample))
-    print(training_sample)
-    print(dynamics.params)
+    # print(100 * model.evaluateAveragePerformance(training_sample))
+    # print(training_sample)
+    
+    # print(dynamics.params)
 
 
     print('size', dynamics.params['size'])
@@ -62,7 +63,7 @@ if __name__ == '__main__':
     model = model.load_from_file('model_tuned_crunchbase_simulated_database.pkl')
 
     print('perforamce on Trainging set AFTER')
-    print(100 * model.evaluateAveragePerformance(training_sample))
+    # print(100 * model.evaluateAveragePerformance(training_sample))
     model.plot_losses()
     model.save_losses()
     # print(model.training_losses)
