@@ -1,4 +1,5 @@
 import torch
+from torch.autograd import Variable
 
 # import theano
 # import lasagne
@@ -92,16 +93,16 @@ class MixtureOfGaussians(GenerativeModel):
         self.pi = torch.FloatTensor(self.pi_un_array/(self.pi_un_array).sum())
 
         if 'RChol' in GenerativeParams:
-            self.RChol = torch.FloatTensor(np.asarray(GenerativeParams['RChol']), requires_grad=True)
+            self.RChol = Variable(torch.FloatTensor(np.asarray(GenerativeParams['RChol'])))
             # theano.shared(value=np.asarray(GenerativeParams['RChol'], dtype = theano.config.floatX), name='RChol' ,borrow=True)     # cholesky of observation noise cov matrix
         else:
-            self.RChol = torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim, yDim)/5), requires_grad=True)
+            self.RChol = Variable(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim, yDim)/5)))
             # theano.shared(value=np.asarray(np.random.randn(xDim, yDim, yDim)/5, dtype = theano.config.floatX), name='RChol' ,borrow=True)     # cholesky of observation noise cov matrix
 
         if 'x0' in GenerativeParams:
-            self.mu = torch.FloatTensor(np.asarray(GenerativeParams['mu']), requires_grad=True) # theano.shared(value=np.asarray(GenerativeParams['mu'], dtype = theano.config.floatX), name='mu',borrow=True)     # set to zero for stationary distribution
+            self.mu = Variable(torch.FloatTensor(np.asarray(GenerativeParams['mu']))) # theano.shared(value=np.asarray(GenerativeParams['mu'], dtype = theano.config.floatX), name='mu',borrow=True)     # set to zero for stationary distribution
         else:
-            self.mu = torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim)), requires_grad=True) # theano.shared(value=np.asarray(np.random.randn(xDim, yDim), dtype = theano.config.floatX), name='mu', borrow=True)     # set to zero for stationary distribution
+            self.mu = Variable(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim)))) # theano.shared(value=np.asarray(np.random.randn(xDim, yDim), dtype = theano.config.floatX), name='mu', borrow=True)     # set to zero for stationary distribution
 
 
     def sampleXY(self,_N):
