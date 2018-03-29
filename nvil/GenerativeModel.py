@@ -101,21 +101,21 @@ class MixtureOfGaussians(GenerativeModel):
         if 'x0' in GenerativeParams:
             self.mu = torch.FloatTensor(np.asarray(GenerativeParams['mu'])) # theano.shared(value=np.asarray(GenerativeParams['mu'], dtype = theano.config.floatX), name='mu',borrow=True)     # set to zero for stationary distribution
         else:
-            self.mu = torch.FloatTensor(np.asarray(GenerativeParams['mu'])) # theano.shared(value=np.asarray(np.random.randn(xDim, yDim), dtype = theano.config.floatX), name='mu', borrow=True)     # set to zero for stationary distribution
+            self.mu = torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim))) # theano.shared(value=np.asarray(np.random.randn(xDim, yDim), dtype = theano.config.floatX), name='mu', borrow=True)     # set to zero for stationary distribution
 
 
     def sampleXY(self,_N):
 
-        _mu = np.asarray(self.mu.eval(), dtype=torch.FloatTensor)
-        _RChol = np.asarray(self.RChol.eval())
-        _pi = torch.clamp(self.pi, 0.001, 0.999).eval()
+        _mu = self.mu #np.asarray(self.mu.data(), dtype=torch.FloatTensor)
+        _RChol = np.asarray(self.RChol)
+        _pi = torch.clamp(self.pi, 0.001, 0.999) #.data()
         # z = torch.clamp(x, 0, 1) will return a new Tensor with the result of x bounded between 0 and 1.
 
         b_vals = np.random.multinomial(1, _pi, size=_N)
         x_vals = b_vals.nonzero()[1]
 
         y_vals = np.zeros([_N, self.yDim])
-        for ii in xrange(_N):
+        for ii in range(_N):
             y_vals[ii] = np.dot(np.random.randn(1,self.yDim), _RChol[x_vals[ii],:,:].T) + _mu[x_vals[ii]]
 
         b_vals = np.asarray(b_vals, dtype=torch.FloatTensor)
@@ -129,7 +129,7 @@ class MixtureOfGaussians(GenerativeModel):
     def evaluateLogDensity(self, h, Y):
         X = h.nonzero()[1]
         LogDensityVec = []
-        for count in range(length(Y))
+        for count in range(length(Y)):
             LogDensityVeci, _ = logNormalPDF(Y[count], self.mu[X][count], self.RChol[X][count])
             LogDensityVec += [LogDensityVeci]
         # LogDensityVec,_ = torch.map(logNormalPDF, sequences = [Y,self.mu[X],self.RChol[X]])

@@ -11,7 +11,7 @@ class GMMDataset(Dataset):
         self.ysamp = ysamp
         self.xdim = xDim
         self.ydim = yDim
-        ysam_mean = ysamp.mean(axis=0)
+        ysamp_mean = ysamp.mean(axis=0)
         self.ytrain = ysamp - ysamp_mean
 
     def __getitem__(self, index):

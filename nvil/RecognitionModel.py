@@ -26,11 +26,10 @@ class RecognitionModel(object):
     appropriate sampling expression.
     '''
 
-    def __init__(self,Input,indices,xDim,yDim):
+    def __init__(self,indices,xDim,yDim):
 
         self.xDim = xDim
         self.yDim = yDim
-        self.Input = Input
         self.indices = indices
 
     # def evalEntropy(self):
@@ -72,36 +71,6 @@ class RecognitionModel(object):
     #     raise Exception("Please implement me. This is an abstract method.")
 
 
-class GMMRecognition(RecognitionModel,NeuralNetworkModel):
-
-    def __init__(self,RecognitionParams,Input,xDim,yDim):
-        '''
-        h = Q_phi(x|y), where phi are parameters, x is our latent class, and y are data
-        '''
-        super(GMMRecognition, self).__init__(Input,None,xDim,yDim)
-        # self.N = Input.shape[0]                not used anywhere!
-
-        self.h = self.forward(self.Input)
-
-    # def getParams(self):
-    #     network_params = lasagne.layers.get_all_params(self.NN_h)
-    #     return network_params
-
-    def getSample(self, Y):
-        pi=T.clip(self.h, 0.001, 0.999).eval({self.Input:Y})
-        pi= (1/pi.sum(axis=1))[:, np.newaxis]*pi #enforce normalization (undesirable; for numerical stability)
-        x_vals = np.zeros([pi.shape[0],self.xDim])
-        for ii in xrange(pi.shape[0]):
-            x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1) #.nonzero()[1]
-
-        return x_vals.astype(bool)
-
-    def evalLogDensity(self, hsamp):
-
-        ''' We assume each sample is a single multinomial sample from the latent h, so each sample is an integer class.'''
-        return torch.log((self.h*hsamp).sum(axis=1))
-
-
 class NeuralNetworkModel(nn.Module):
 
     # rec_nn = lasagne.layers.DenseLayer(rec_nn, 100, nonlinearity=leaky_rectify, W=lasagne.init.Orthogonal())
@@ -123,3 +92,31 @@ class NeuralNetworkModel(nn.Module):
         y1 = self.nonlinearity1(self.lin1(x))
         y2 = self.nonlinearity2(self.lin2(y1))
         return y2
+
+class GMMRecognition(RecognitionModel,NeuralNetworkModel):
+
+    def __init__(self,RecognitionParams,xDim,yDim):
+        '''
+        h = Q_phi(x|y), where phi are parameters, x is our latent class, and y are data
+        '''
+        super(GMMRecognition, self).__init__(indices=None,xDim=xDim,yDim=yDim)
+        # self.N = Input.shape[0]                not used anywhere!
+
+    # def getParams(self):
+    #     network_params = lasagne.layers.get_all_params(self.NN_h)
+    #     return network_params
+
+    def getSample(self, Y):
+        pi=T.clip(self.h, 0.001, 0.999).eval({self.Input:Y})
+        pi= (1/pi.sum(axis=1))[:, np.newaxis]*pi #enforce normalization (undesirable; for numerical stability)
+        x_vals = np.zeros([pi.shape[0],self.xDim])
+        for ii in xrange(pi.shape[0]):
+            x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1) #.nonzero()[1]
+
+        return x_vals.astype(bool)
+
+    def evalLogDensity(self, hsamp, Y):
+
+        ''' We assume each sample is a single multinomial sample from the latent h, so each sample is an integer class.'''
+        self.h = self.forward(Y)
+        return torch.log((self.h*hsamp).sum(axis=1))

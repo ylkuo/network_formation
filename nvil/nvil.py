@@ -29,21 +29,19 @@ class NVIL():
                  nCUnits=100, # number of units used in the (single-layer) bias-correction network
                  learning_rate=3e-4
                 ):
-        
-        # instantiate rng's
-        self.nrng = np.random.RandomState(124)
+
+        self.xDim   = xDim
+        self.yDim   = yDim
         
         #---------------------------------------------------------
         # instantiate our prior & recognition models
-        self.mrec   = REC_MODEL(rec_params, self.xDim, self.yDim, nrng=self.nrng)
-        self.mprior = GEN_MODEL(gen_params, self.xDim, self.yDim, nrng=self.nrng)
+        self.mrec   = REC_MODEL(rec_params, self.xDim, self.yDim)
+        self.mprior = GEN_MODEL(gen_params, self.xDim, self.yDim)
 
         # NVIL Bias-correction network
         self.C_nn = BiasCorrectNet(yDim, nCUnits)
  
         # Set NVIL params
-        self.xDim   = xDim
-        self.yDim   = yDim
         self.c = torch.FloatTensor(np.asarray(opt_params['c0']))
         self.v = torch.FloatTensor(np.asarray(opt_params['v0']))
         self.alpha = torch.FloatTensor(np.asarray(opt_params['alpha']))
@@ -60,7 +58,7 @@ class NVIL():
         # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
 
         # Evaluate the recognition model density Q_\phi(h_i | y_i)
-        q_hgy = self.mrec.evalLogDensity(hsamp)
+        q_hgy = self.mrec.evalLogDensity(hsamp, Y)
         # Evaluate the generative model density P_\theta(y_i , h_i)
         p_yh =  self.mprior.evaluateLogDensity(hsamp, Y)
         C_out = self.C_nn.forward(Y)

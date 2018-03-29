@@ -10,24 +10,26 @@ from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
 from torch.utils.data import DataLoader
 
-def __main__():
+if __name__ == '__main__':
     # load dataset
-    data_loader = DataLoader(dataset=GMMDataset(),
+    dataset = GMMDataset()
+    data_loader = DataLoader(dataset=dataset,
                              batch_size=10, shuffle=True)
+    print('load data')
+    print(dataset.ytrain)
 
     # build model
     opt_params = dict({'c0': -0.0, 'v0': 1.0, 'alpha': 0.9})
-    # TODO: call to get the recognition network
-    NN_Params = dict([('network', rec_nn)])
+    NN_Params = dict([])
     recDict = dict([('NN_Params', NN_Params)])
-    xdim, ydim = data_loader.get_dim()
+    xdim, ydim = dataset.get_dim()
     model = NVIL(opt_params, dict([]), MixtureOfGaussians,
                  recDict, GMMRecognition, xdim, ydim,
                  nCUnits=100, learning_rate=3e-4)
 
     # init generative model with k-means solution
     km = KMeans(n_clusters=xdim, n_init=10, max_iter=500)
-    kmpred = km.fit_predict(data_loader.ytrain)
+    kmpred = km.fit_predict(dataset.ytrain)
     km_mu = np.zeros([xdim, ydim])
     km_chol = np.zeros([xdim, ydim, ydim])
     for cl in np.unique(kmpred):
