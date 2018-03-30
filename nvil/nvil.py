@@ -1,6 +1,7 @@
 # Class for Neural Variational Inference and Learning (NVIL)
 
 import numpy as np
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,8 +14,9 @@ class BiasCorrectNet(nn.Module):
         super(BiasCorrectNet, self).__init__()
         self.lin1 = nn.Linear(yDim, nCUnits)
         self.lin2 = nn.Linear(nCUnits, 1)
+        self.nonlin = nn.LeakyReLU()
     def forward(self, x):
-        x = F.relu(self.lin1(x))
+        x = self.nonlin(self.lin1(x))
         return F.relu(self.lin2(x))
 
 class NVIL():
@@ -42,9 +44,9 @@ class NVIL():
         self.C_nn = BiasCorrectNet(yDim, nCUnits)
  
         # Set NVIL params
-        self.c = torch.FloatTensor(np.asarray(opt_params['c0']))
-        self.v = torch.FloatTensor(np.asarray(opt_params['v0']))
-        self.alpha = torch.FloatTensor(np.asarray(opt_params['alpha']))
+        self.c = torch.FloatTensor([opt_params['c0']])
+        self.v = torch.FloatTensor([opt_params['v0']])
+        self.alpha = torch.FloatTensor([opt_params['alpha']])
 
         # ADAM defaults
         self.mprior_opt = optim.Adam(self.mprior.parameters(),
@@ -61,28 +63,29 @@ class NVIL():
         q_hgy = self.mrec.evalLogDensity(hsamp, Y)
         # Evaluate the generative model density P_\theta(y_i , h_i)
         p_yh =  self.mprior.evaluateLogDensity(hsamp, Y)
-        C_out = self.C_nn.forward(Y)
-        
+        C_out = torch.squeeze(self.C_nn.forward(Y))
         L = p_yh.mean() - q_hgy.mean()
         l = p_yh - q_hgy - C_out
         return [L, l, p_yh, q_hgy, C_out]
 
     def update_cv(self, l, batch_y, h):
         # Now compute derived quantities for the update
-        cb = l.mean()
-        vb = l.var()
+        cb = l.mean().data
+        vb = l.var().data
         self.c = self.alpha * self.c + (1-self.alpha) * cb
         self.v = self.alpha * self.v + (1-self.alpha) * vb
 
     def update_params(self, y, l, p_yh, q_hgy, C_out):
-        avg_cost = 0
+        loss = 0
         for i in range(y.shape[0]):
-            lii = (l[i] - self.c) / torch.maximum(1, torch.sqrt(self.v))
-            cost = pyh[i] + q_hgy[i] * lii + C_out[i] * lii
-            avg_cost += cost
+            if torch.sqrt(self.v).numpy()[0] > 1.0:
+                lii = (l[i] - Variable(self.c)) / Variable(torch.sqrt(self.v))
+            else:
+                lii = l[i] - Variable(self.c)
+            cost = p_yh[i] + q_hgy[i] * lii + C_out[i] * lii
+            loss += cost
         # compute gradients
-        avg_cost /= y.shape[0]
-        avg_cost.backward()
+        loss.backward()
         # step to optimize
         self.mprior_opt.zero_grad()
         self.mrec_opt.zero_grad()
@@ -90,7 +93,6 @@ class NVIL():
         self.mprior_opt.step()
         self.mrec_opt.step()
         self.C_nn_opt.step()
-        return avg_cost
 
     def fit(self, data_loader, max_epochs=100):
         avg_costs = []
@@ -100,16 +102,16 @@ class NVIL():
             sys.stdout.flush()
             batch_counter = 0
             for data_x, data_y in data_loader:
-                y = Variable(data_y)
+                y = Variable(data_y).float()
                 hsamp_np = self.mrec.getSample(y)
                 L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(y, hsamp_np)
                 self.update_cv(l, y, hsamp_np)
-                avg_cost = self.update_params(y, L, l, p_yh, q_hgy, C_out)
+                self.update_params(y, l, p_yh, q_hgy, C_out)
                 if np.mod(batch_counter, 10) == 0:
-                    cx = model.c
-                    vx = model.v
-                    print('(c, v, L): (%f, %f, %f)\n' % (np.asarray(cx), np.asarray(vx), avg_cost))
-                avg_costs.append(avg_cost)
+                    cx = self.c
+                    vx = self.v
+                    print('(c, v, L): (%f, %f, %f)\n' % (np.asarray(cx), np.asarray(vx), L))
+                avg_costs.append(L.data.numpy())
                 batch_counter += 1
             epoch += 1
         return avg_costs

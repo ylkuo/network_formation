@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
 
 # import theano
@@ -11,6 +12,9 @@ import numpy as np
 
 # from theano.tensor.shared_randomstreams import RandomStreams
 
+def det(a):
+    return torch.potrf(a).diag().prod()
+
 def NormalPDFmat(X,Mu,XChol,xDim):
     ''' Use this version when X is a matrix [N x xDim] '''
     return torch.exp(logNormalPDFmat(X,Mu,XChol,xDim))
@@ -20,8 +24,8 @@ def logNormalPDFmat(X,Mu,XChol,xDim):
     Lambda = torhc.inverse(torch.mm(XChol,torch.t(XChol)))
     XMu = X-Mu
     return (-0.5 * torch.mm(XMu, torch.mm(Lambda, torch.t(XMu)))
-                  + 0.5 * X.shape[0] * torch.log(Tla.det(Lambda))
-                  - 0.5 * np.log(2*np.pi) * X.shape[0]*xDim)
+            + 0.5 * X.shape[0] * torch.log(det(Lambda))
+            - 0.5 * np.log(2*np.pi) * X.shape[0]*xDim)
 
 def NormalPDF(X,Mu,XChol):
     return torch.exp(logNormalPDF(X,Mu,XChol))
@@ -29,9 +33,9 @@ def NormalPDF(X,Mu,XChol):
 def logNormalPDF(X,Mu,XChol):
     Lambda = torch.inverse(torch.mm(XChol,torch.t(XChol)))  # torch.mm does matrix multiplication
     XMu    = X-Mu
-    return (-0.5 * torch.mm(XMu, torch.mm(Lambda,torch.t(XMu)))  # torch.t transposes
-                  + 0.5 * torch.log(torch.det(Lambda))
-                  - 0.5 * np.log(2*np.pi) * X.shape[0])
+    return (-0.5 * torch.mm(XMu.view(1,XMu.shape[0]), torch.mm(Lambda, XMu.view(XMu.shape[0], 1)))  # torch.t transposes
+            + 0.5 * torch.log(det(Lambda))
+            - 0.5 * np.log(2*np.pi) * X.shape[0])
 
 
 class GenerativeModel(object):
@@ -82,34 +86,35 @@ class MixtureOfGaussians(GenerativeModel):
 
         # Mixture distribution
         if 'pi' in GenerativeParams:
-            self.pi_un = torch.FloatTensor(np.asarray(GenerativeParams['pi']))
+            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['pi'])), requires_grad=True)
             self.pi_un_array = np.asarray(GenerativeParams['pi'])
             # theano.shared(value=np.asarray(GenerativeParams['pi'], dtype = theano.config.floatX), name='pi_un', borrow=True)     # cholesky of observation noise cov matrix
         else:
-            self.pi_un = torch.FloatTensor(np.asarray(100*np.ones(xDim)))
+            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(xDim))), requires_grad=True)
             self.pi_un_array = np.asarray(100 * np.ones(xDim))
             # theano.shared(value=np.asarray(100*np.ones(xDim), dtype = theano.config.floatX), name='pi_un' ,borrow=True)     # cholesky of observation noise cov matrix
 
-        self.pi = torch.FloatTensor(self.pi_un_array/(self.pi_un_array).sum())
+        self.pi = Variable(torch.FloatTensor(self.pi_un_array/(self.pi_un_array).sum()))
+        #self.pi = torch.FloatTensor(self.pi_un_array/(self.pi_un_array).sum())
 
         if 'RChol' in GenerativeParams:
-            self.RChol = Variable(torch.FloatTensor(np.asarray(GenerativeParams['RChol'])))
+            self.RChol = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['RChol'])), requires_grad=True)
             # theano.shared(value=np.asarray(GenerativeParams['RChol'], dtype = theano.config.floatX), name='RChol' ,borrow=True)     # cholesky of observation noise cov matrix
         else:
-            self.RChol = Variable(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim, yDim)/5)))
+            self.RChol = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim, yDim)/5)), requires_grad=True)
             # theano.shared(value=np.asarray(np.random.randn(xDim, yDim, yDim)/5, dtype = theano.config.floatX), name='RChol' ,borrow=True)     # cholesky of observation noise cov matrix
 
         if 'x0' in GenerativeParams:
-            self.mu = Variable(torch.FloatTensor(np.asarray(GenerativeParams['mu']))) # theano.shared(value=np.asarray(GenerativeParams['mu'], dtype = theano.config.floatX), name='mu',borrow=True)     # set to zero for stationary distribution
+            self.mu = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['mu'])), requires_grad=True) # theano.shared(value=np.asarray(GenerativeParams['mu'], dtype = theano.config.floatX), name='mu',borrow=True)     # set to zero for stationary distribution
         else:
-            self.mu = Variable(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim)))) # theano.shared(value=np.asarray(np.random.randn(xDim, yDim), dtype = theano.config.floatX), name='mu', borrow=True)     # set to zero for stationary distribution
+            self.mu = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim))), requires_grad=True) # theano.shared(value=np.asarray(np.random.randn(xDim, yDim), dtype = theano.config.floatX), name='mu', borrow=True)     # set to zero for stationary distribution
 
 
     def sampleXY(self,_N):
 
-        _mu = self.mu #np.asarray(self.mu.data(), dtype=torch.FloatTensor)
-        _RChol = np.asarray(self.RChol)
-        _pi = torch.clamp(self.pi, 0.001, 0.999) #.data()
+        _mu = np.asarray(self.mu.data)
+        _RChol = np.asarray(self.RChol.data)
+        _pi = np.asarray(torch.clamp(self.pi, 0.001, 0.999).data)
         # z = torch.clamp(x, 0, 1) will return a new Tensor with the result of x bounded between 0 and 1.
 
         b_vals = np.random.multinomial(1, _pi, size=_N)
@@ -119,8 +124,8 @@ class MixtureOfGaussians(GenerativeModel):
         for ii in range(_N):
             y_vals[ii] = np.dot(np.random.randn(1,self.yDim), _RChol[x_vals[ii],:,:].T) + _mu[x_vals[ii]]
 
-        b_vals = np.asarray(b_vals, dtype=torch.FloatTensor)
-        y_vals = np.asarray(y_vals, dtype=torch.FloatTensor)
+        b_vals = np.asarray(b_vals)
+        y_vals = np.asarray(y_vals)
 
         return [b_vals, y_vals]
 
@@ -128,13 +133,11 @@ class MixtureOfGaussians(GenerativeModel):
         params_list = [self.RChol] + [self.mu] + [self.pi_un]
         for params in params_list:
             yield params
-        # return [self.RChol] + [self.mu] + [self.pi_un]
 
     def evaluateLogDensity(self, h, Y):
         X = h.nonzero()[1]
-        LogDensityVec = []
-        for count in range(length(Y)):
-            LogDensityVeci, _ = logNormalPDF(Y[count], self.mu[X][count], self.RChol[X][count])
-            LogDensityVec += [LogDensityVeci]
-        # LogDensityVec,_ = torch.map(logNormalPDF, sequences = [Y,self.mu[X],self.RChol[X]])
-        return LogDensityVec + torch.log(self.pi[X])
+        log_density = []
+        for count in range(Y.shape[0]):
+            LogDensityVeci = logNormalPDF(Y[count], self.mu[X[count]], self.RChol[X[count]])
+            log_density += [LogDensityVeci + torch.log(self.pi[X[count]])]
+        return torch.squeeze(torch.stack(log_density))

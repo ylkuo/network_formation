@@ -2,17 +2,11 @@ import sys
 sys.path.append('../lib/')
 
 import torch
-
-
 import torch.nn as nn
 import torch.nn.functional as F
-
-# import theano
-# import lasagne
-# from theano import tensor as T, function, printing
-# import theano.tensor.nlinalg as Tla
 import numpy as np
-# import theano.tensor.slinalg as Tsla
+
+from torch.autograd import Variable
 
 class RecognitionModel(object):
     '''
@@ -26,11 +20,10 @@ class RecognitionModel(object):
     appropriate sampling expression.
     '''
 
-    def __init__(self,indices,xDim,yDim):
+    def __init__(self,xDim=3,yDim=2):
 
         self.xDim = xDim
         self.yDim = yDim
-        self.indices = indices
 
     # def evalEntropy(self):
     #     '''
@@ -81,25 +74,26 @@ class NeuralNetworkModel(nn.Module):
     # recDict = dict([('NN_Params', NN_Params)])
     # self.NN_h = RecognitionParams['NN_Params']['network']
 
-    def __init__(self, yDim=2, nCUnits=100):
-        super(BiasCorrectNet, self).__init__()
+    def __init__(self, yDim=2, xDim=3, nCUnits=100):
+        super(NeuralNetworkModel, self).__init__()
         self.lin1 = nn.Linear(yDim, nCUnits)
-        self.lin2 = nn.Linear(nCUnits, 1)
+        self.lin2 = nn.Linear(nCUnits, xDim)
         self.nonlinearity1 = nn.LeakyReLU(0.1)
         self.nonlinearity2 = nn.Softmax()
 
     def forward(self, x):
-        y1 = self.nonlinearity1(self.lin1(x))
+        y1 = self.nonlinearity1(self.lin1(x.float()))
         y2 = self.nonlinearity2(self.lin2(y1))
         return y2
 
-class GMMRecognition(RecognitionModel,NeuralNetworkModel):
+class GMMRecognition(RecognitionModel):
 
     def __init__(self,RecognitionParams,xDim,yDim):
         '''
         h = Q_phi(x|y), where phi are parameters, x is our latent class, and y are data
         '''
-        super(GMMRecognition, self).__init__(indices=None,xDim=xDim,yDim=yDim)
+        super(GMMRecognition, self).__init__(xDim=xDim, yDim=yDim)
+        self.network = NeuralNetworkModel(yDim)
         # self.N = Input.shape[0]                not used anywhere!
 
     # def getParams(self):
@@ -107,16 +101,21 @@ class GMMRecognition(RecognitionModel,NeuralNetworkModel):
     #     return network_params
 
     def getSample(self, Y):
-        pi=T.clip(self.h, 0.001, 0.999).eval({self.Input:Y})
-        pi= (1/pi.sum(axis=1))[:, np.newaxis]*pi #enforce normalization (undesirable; for numerical stability)
-        x_vals = np.zeros([pi.shape[0],self.xDim])
-        for ii in xrange(pi.shape[0]):
-            x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1) #.nonzero()[1]
+        self.h = self.network.forward(Y)
+        pi = np.asarray(torch.clamp(self.h, 0.001, 0.999).data)
+        pi = (1/pi.sum(axis=1))[:, np.newaxis]*pi #enforce normalization (undesirable; for numerical stability)
+        x_vals = np.zeros([pi.shape[0], self.xDim])
+        for ii in range(pi.shape[0]):
+            x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1)
 
         return x_vals.astype(bool)
 
     def evalLogDensity(self, hsamp, Y):
 
         ''' We assume each sample is a single multinomial sample from the latent h, so each sample is an integer class.'''
-        self.h = self.forward(Y)
-        return torch.log((self.h*hsamp).sum(axis=1))
+        self.h = np.asarray(self.network.forward(Y).data)
+        return Variable(torch.FloatTensor(np.log((self.h*hsamp).sum(axis=1))))
+
+    def parameters(self):
+        return self.network.parameters()
+
