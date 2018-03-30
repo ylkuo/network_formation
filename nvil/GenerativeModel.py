@@ -1,16 +1,9 @@
+import numpy as np
 import torch
 import torch.nn as nn
+
 from torch.autograd import Variable
 
-# import theano
-# import lasagne
-# import theano.tensor as T
-# import theano.tensor.nlinalg as Tla
-# import theano.tensor.slinalg as Tsla
-
-import numpy as np
-
-# from theano.tensor.shared_randomstreams import RandomStreams
 
 def det(a):
     return torch.potrf(a).diag().prod()
@@ -31,9 +24,9 @@ def NormalPDF(X,Mu,XChol):
     return torch.exp(logNormalPDF(X,Mu,XChol))
 
 def logNormalPDF(X,Mu,XChol):
-    Lambda = torch.inverse(torch.mm(XChol,torch.t(XChol)))  # torch.mm does matrix multiplication
+    Lambda = torch.inverse(torch.mm(XChol,torch.t(XChol)))
     XMu    = X-Mu
-    return (-0.5 * torch.mm(XMu.view(1,XMu.shape[0]), torch.mm(Lambda, XMu.view(XMu.shape[0], 1)))  # torch.t transposes
+    return (-0.5 * torch.mm(XMu.view(1,XMu.shape[0]), torch.mm(Lambda, XMu.view(XMu.shape[0], 1)))
             + 0.5 * torch.log(det(Lambda))
             - 0.5 * np.log(2*np.pi) * X.shape[0])
 
@@ -45,13 +38,8 @@ class GenerativeModel(object):
     def __init__(self,GenerativeParams,xDim,yDim):
 
         # input variable referencing top-down or external input
-
         self.xDim = xDim
         self.yDim = yDim
-
-
-        # internal RV for generating sample
-        # self.Xsamp = T.matrix('Xsamp')
 
     def evaluateLogDensity(self):
         '''
@@ -88,34 +76,27 @@ class MixtureOfGaussians(GenerativeModel):
         if 'pi' in GenerativeParams:
             self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['pi'])), requires_grad=True)
             self.pi_un_array = np.asarray(GenerativeParams['pi'])
-            # theano.shared(value=np.asarray(GenerativeParams['pi'], dtype = theano.config.floatX), name='pi_un', borrow=True)     # cholesky of observation noise cov matrix
         else:
             self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(xDim))), requires_grad=True)
             self.pi_un_array = np.asarray(100 * np.ones(xDim))
-            # theano.shared(value=np.asarray(100*np.ones(xDim), dtype = theano.config.floatX), name='pi_un' ,borrow=True)     # cholesky of observation noise cov matrix
 
         self.pi = Variable(torch.FloatTensor(self.pi_un_array/(self.pi_un_array).sum()))
-        #self.pi = torch.FloatTensor(self.pi_un_array/(self.pi_un_array).sum())
 
         if 'RChol' in GenerativeParams:
             self.RChol = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['RChol'])), requires_grad=True)
-            # theano.shared(value=np.asarray(GenerativeParams['RChol'], dtype = theano.config.floatX), name='RChol' ,borrow=True)     # cholesky of observation noise cov matrix
         else:
             self.RChol = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim, yDim)/5)), requires_grad=True)
-            # theano.shared(value=np.asarray(np.random.randn(xDim, yDim, yDim)/5, dtype = theano.config.floatX), name='RChol' ,borrow=True)     # cholesky of observation noise cov matrix
 
         if 'x0' in GenerativeParams:
-            self.mu = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['mu'])), requires_grad=True) # theano.shared(value=np.asarray(GenerativeParams['mu'], dtype = theano.config.floatX), name='mu',borrow=True)     # set to zero for stationary distribution
+            self.mu = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['mu'])), requires_grad=True) # set to zero for stationary distribution
         else:
-            self.mu = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim))), requires_grad=True) # theano.shared(value=np.asarray(np.random.randn(xDim, yDim), dtype = theano.config.floatX), name='mu', borrow=True)     # set to zero for stationary distribution
+            self.mu = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim))), requires_grad=True)    # set to zero for stationary distribution
 
 
     def sampleXY(self,_N):
-
         _mu = np.asarray(self.mu.data)
         _RChol = np.asarray(self.RChol.data)
         _pi = np.asarray(torch.clamp(self.pi, 0.001, 0.999).data)
-        # z = torch.clamp(x, 0, 1) will return a new Tensor with the result of x bounded between 0 and 1.
 
         b_vals = np.random.multinomial(1, _pi, size=_N)
         x_vals = b_vals.nonzero()[1]

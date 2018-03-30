@@ -1,6 +1,3 @@
-import sys
-sys.path.append('../lib/')
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,26 +18,8 @@ class RecognitionModel(object):
     '''
 
     def __init__(self,xDim=3,yDim=2):
-
         self.xDim = xDim
         self.yDim = yDim
-
-    # def evalEntropy(self):
-    #     '''
-    #     Evaluates entropy of posterior approximation
-    #
-    #     H(q(x))
-    #
-    #     This is NOT normalized by the number of samples
-    #     '''
-    #     raise Exception("Please implement me. This is an abstract method.")
-
-    # def getParams(self):
-    #     '''
-    #     Returns a list of Theano objects that are parameters of the
-    #     recognition model. These will be updated during learning
-    #     '''
-    #     return self.params
 
     def getSample(self):
         '''
@@ -49,31 +28,8 @@ class RecognitionModel(object):
         '''
         raise Exception("Please implement me. This is an abstract method.")
 
-    # def setTrainingMode(self):
-    #     '''
-    #     changes the internal state so that `getSample` will possibly return
-    #     noisy samples for better generalization
-    #     '''
-    #     raise Exception("Please implement me. This is an abstract method.")
-    #
-    # def setTestMode(self):
-    #     '''
-    #     changes the internal state so that `getSample` will supress noise
-    #     (e.g., dropout) for prediction
-    #     '''
-    #     raise Exception("Please implement me. This is an abstract method.")
-
 
 class NeuralNetworkModel(nn.Module):
-
-    # rec_nn = lasagne.layers.DenseLayer(rec_nn, 100, nonlinearity=leaky_rectify, W=lasagne.init.Orthogonal())
-    # rec_nn = lasagne.layers.DenseLayer(rec_nn, xDim, nonlinearity=softmax, W=lasagne.init.Orthogonal(),
-    #                                    b=-5 * np.ones(xDim, dtype=theano.config.floatX))
-    #
-    # NN_Params = dict([('network', rec_nn)])
-    # recDict = dict([('NN_Params', NN_Params)])
-    # self.NN_h = RecognitionParams['NN_Params']['network']
-
     def __init__(self, yDim=2, xDim=3, nCUnits=100):
         super(NeuralNetworkModel, self).__init__()
         self.lin1 = nn.Linear(yDim, nCUnits)
@@ -94,11 +50,6 @@ class GMMRecognition(RecognitionModel):
         '''
         super(GMMRecognition, self).__init__(xDim=xDim, yDim=yDim)
         self.network = NeuralNetworkModel(yDim)
-        # self.N = Input.shape[0]                not used anywhere!
-
-    # def getParams(self):
-    #     network_params = lasagne.layers.get_all_params(self.NN_h)
-    #     return network_params
 
     def getSample(self, Y):
         self.h = self.network.forward(Y)
