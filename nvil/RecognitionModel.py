@@ -5,33 +5,16 @@ import numpy as np
 
 from torch.autograd import Variable
 
-class RecognitionModel(object):
-    '''
-    Recognition Model Interace Class
 
-    Recognition model approximates the posterior given some observations
+class GMMRecognition(nn.Module):
 
-    Different forms of recognition models will have this interface
-
-    The constructor must take the Input Theano variable and create the
-    appropriate sampling expression.
-    '''
-
-    def __init__(self,xDim=3,yDim=2):
-        self.xDim = xDim
-        self.yDim = yDim
-
-    def getSample(self):
+    def __init__(self,RecognitionParams,xDim,yDim, nCUnits=100):
         '''
-        Returns a Theano object that are samples from the recognition model
-        given the input
+        h = Q_phi(x|y), where phi are parameters, x is our latent class, and y are data
         '''
-        raise Exception("Please implement me. This is an abstract method.")
-
-
-class NeuralNetworkModel(nn.Module):
-    def __init__(self, yDim=2, xDim=3, nCUnits=100):
-        super(NeuralNetworkModel, self).__init__()
+        super(GMMRecognition, self).__init__()
+        self.xDim=xDim
+        self.yDim=yDim
         self.lin1 = nn.Linear(yDim, nCUnits)
         self.lin2 = nn.Linear(nCUnits, xDim)
         self.nonlinearity1 = nn.LeakyReLU(0.1)
@@ -42,31 +25,19 @@ class NeuralNetworkModel(nn.Module):
         y2 = self.nonlinearity2(self.lin2(y1))
         return y2
 
-class GMMRecognition(RecognitionModel):
-
-    def __init__(self,RecognitionParams,xDim,yDim):
-        '''
-        h = Q_phi(x|y), where phi are parameters, x is our latent class, and y are data
-        '''
-        super(GMMRecognition, self).__init__(xDim=xDim, yDim=yDim)
-        self.network = NeuralNetworkModel(yDim)
-
     def getSample(self, Y):
-        self.h = self.network.forward(Y)
+        self.h = self.forward(Y)
         pi = np.asarray(torch.clamp(self.h, 0.001, 0.999).data)
         pi = (1/pi.sum(axis=1))[:, np.newaxis]*pi #enforce normalization (undesirable; for numerical stability)
         x_vals = np.zeros([pi.shape[0], self.xDim])
         for ii in range(pi.shape[0]):
             x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1)
 
-        return x_vals.astype(bool)
+        return Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
 
     def evalLogDensity(self, hsamp, Y):
 
         ''' We assume each sample is a single multinomial sample from the latent h, so each sample is an integer class.'''
-        self.h = np.asarray(self.network.forward(Y).data)
-        return Variable(torch.FloatTensor(np.log((self.h*hsamp).sum(axis=1))))
-
-    def parameters(self):
-        return self.network.parameters()
+        self.h = self.forward(Y)
+        return torch.log(torch.sum(self.h*hsamp, 1))
 

@@ -60,7 +60,7 @@ if __name__ == '__main__':
     plt.hold('on')
     for ii in range(xdim):
         Rc = dataset.gmm.RChol[ii].data.numpy()
-        plot_cov_ellipse(Rc.dot(Rc.T), dataset.gmm.mu[ii].data.numpy(), nstd=2, color=clr[ii%5], alpha=.3)
+        plot_cov_ellipse(Rc.dot(Rc.T), dataset.gmm.mu[ii].data.numpy(), nstd=2, color=clr[ii], alpha=.3)
     plt.title('True Distribution')
     plt.ylabel(r'$x_0$')
     plt.xlabel(r'$x_1$')
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     plt.plot(dataset.ytrain[:,0], dataset.ytrain[:,1],'k.', alpha=.1)
     for ii in range(xdim):
         Rc = model.mprior.RChol[ii].data.numpy()
-        plot_cov_ellipse(Rc.dot(Rc.T), model.mprior.mu[ii].data.numpy(), nstd=2, color=clr[ii%5], alpha=.3)
+        plot_cov_ellipse(Rc.dot(Rc.T), model.mprior.mu[ii].data.numpy(), nstd=2, color=clr[ii], alpha=.3)
     plt.title('Learned Distributions')    
     plt.ylabel(r'$x_0$')
     plt.xlabel(r'$x_1$')
@@ -77,17 +77,17 @@ if __name__ == '__main__':
 
     # plot inferred label
     xlbl = dataset.xsamp.nonzero()[1]
-    post_dist = model.mrec.network.forward(Variable(torch.FloatTensor(dataset.ytrain))).data.numpy()
+    post_dist = model.mrec.forward(Variable(torch.FloatTensor(dataset.ytrain))).data.numpy()
     learned_lbl = post_dist.argmax(axis=1)
     clr = ['b', 'r', 'c', 'g', 'm', 'o']
     plt.figure()
     for ii in np.random.permutation(range(500)):
         plt.subplot(121)
         plt.hold('on')
-        plt.plot(dataset.ysamp[ii,0], dataset.ysamp[ii,1], '.', color=clr[xlbl[ii]%5])
+        plt.plot(dataset.ysamp[ii,0], dataset.ysamp[ii,1], '.', color=clr[xlbl[ii]])
         plt.subplot(122)
         plt.hold('on')
-        plt.plot(dataset.ysamp[ii,0], dataset.ysamp[ii,1], '.', color=clr[learned_lbl[ii]%5])
+        plt.plot(dataset.ysamp[ii,0], dataset.ysamp[ii,1], '.', color=clr[learned_lbl[ii]])
     plt.subplot(121)
     plt.title('True Label')
     plt.ylabel(r'$x_0$')

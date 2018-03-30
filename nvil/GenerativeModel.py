@@ -75,12 +75,9 @@ class MixtureOfGaussians(GenerativeModel):
         # Mixture distribution
         if 'pi' in GenerativeParams:
             self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['pi'])), requires_grad=True)
-            self.pi_un_array = np.asarray(GenerativeParams['pi'])
         else:
             self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(xDim))), requires_grad=True)
-            self.pi_un_array = np.asarray(100 * np.ones(xDim))
-
-        self.pi = Variable(torch.FloatTensor(self.pi_un_array/(self.pi_un_array).sum()))
+        self.pi = self.pi_un / self.pi_un.sum()
 
         if 'RChol' in GenerativeParams:
             self.RChol = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['RChol'])), requires_grad=True)
@@ -93,7 +90,7 @@ class MixtureOfGaussians(GenerativeModel):
             self.mu = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim))), requires_grad=True)    # set to zero for stationary distribution
 
 
-    def sampleXY(self,_N):
+    def sampleXY(self, _N):
         _mu = np.asarray(self.mu.data)
         _RChol = np.asarray(self.RChol.data)
         _pi = np.asarray(torch.clamp(self.pi, 0.001, 0.999).data)
@@ -115,10 +112,13 @@ class MixtureOfGaussians(GenerativeModel):
         for params in params_list:
             yield params
 
+    def update_pi(self):
+        self.pi = self.pi_un / self.pi_un.sum()
+
     def evaluateLogDensity(self, h, Y):
-        X = h.nonzero()[1]
+        X = torch.t(h.nonzero())[1]
         log_density = []
         for count in range(Y.shape[0]):
-            LogDensityVeci = logNormalPDF(Y[count], self.mu[X[count]], self.RChol[X[count]])
+            LogDensityVeci = logNormalPDF(Y[count], torch.squeeze(self.mu[X[count]]), torch.squeeze(self.RChol[X[count]]))
             log_density += [LogDensityVeci + torch.log(self.pi[X[count]])]
         return torch.squeeze(torch.stack(log_density))
