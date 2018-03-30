@@ -5,8 +5,8 @@ class GMMDataset(Dataset):
 
     def __init__(self, xDim=3, yDim=2, N=2500):
         self.len = N
-        gmm = MixtureOfGaussians(dict([]), xDim, yDim)
-        [xsamp, ysamp] = gmm.sampleXY(N)
+        self.gmm = MixtureOfGaussians(dict([]), xDim, yDim)
+        [xsamp, ysamp] = self.gmm.sampleXY(N)
         self.xsamp = xsamp
         self.ysamp = ysamp
         self.xdim = xDim

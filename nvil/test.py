@@ -8,7 +8,9 @@ from GenerativeModel import MixtureOfGaussians
 from nvil import *
 from RecognitionModel import GMMRecognition
 from matplotlib import pyplot as plt
+from plot_cov import *
 from sklearn.cluster import KMeans
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 if __name__ == '__main__':
@@ -16,7 +18,6 @@ if __name__ == '__main__':
     dataset = GMMDataset()
     data_loader = DataLoader(dataset=dataset,
                              batch_size=10, shuffle=True)
-    print('load data')
 
     # build model
     opt_params = dict({'c0': -0.0, 'v0': 1.0, 'alpha': 0.9})
@@ -51,3 +52,48 @@ if __name__ == '__main__':
     plt.ylabel('ELBO\n(averaged over minibatch)')
     plt.show()
 
+    # plot learned distribution
+    clr = ['b', 'r', 'c', 'g', 'm', 'o']
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(dataset.ysamp[:,0], dataset.ysamp[:,1], 'k.', alpha=.1)
+    plt.hold('on')
+    for ii in range(xdim):
+        Rc = dataset.gmm.RChol[ii].data.numpy()
+        plot_cov_ellipse(Rc.dot(Rc.T), dataset.gmm.mu[ii].data.numpy(), nstd=2, color=clr[ii%5], alpha=.3)
+    plt.title('True Distribution')
+    plt.ylabel(r'$x_0$')
+    plt.xlabel(r'$x_1$')
+    plt.subplot(122)
+    plt.hold('on')
+    plt.plot(dataset.ytrain[:,0], dataset.ytrain[:,1],'k.', alpha=.1)
+    for ii in range(xdim):
+        Rc = model.mprior.RChol[ii].data.numpy()
+        plot_cov_ellipse(Rc.dot(Rc.T), model.mprior.mu[ii].data.numpy(), nstd=2, color=clr[ii%5], alpha=.3)
+    plt.title('Learned Distributions')    
+    plt.ylabel(r'$x_0$')
+    plt.xlabel(r'$x_1$')
+    plt.show()
+
+    # plot inferred label
+    xlbl = dataset.xsamp.nonzero()[1]
+    post_dist = model.mrec.network.forward(Variable(torch.FloatTensor(dataset.ytrain))).data.numpy()
+    learned_lbl = post_dist.argmax(axis=1)
+    clr = ['b', 'r', 'c', 'g', 'm', 'o']
+    plt.figure()
+    for ii in np.random.permutation(range(500)):
+        plt.subplot(121)
+        plt.hold('on')
+        plt.plot(dataset.ysamp[ii,0], dataset.ysamp[ii,1], '.', color=clr[xlbl[ii]%5])
+        plt.subplot(122)
+        plt.hold('on')
+        plt.plot(dataset.ysamp[ii,0], dataset.ysamp[ii,1], '.', color=clr[learned_lbl[ii]%5])
+    plt.subplot(121)
+    plt.title('True Label')
+    plt.ylabel(r'$x_0$')
+    plt.xlabel(r'$x_1$')
+    plt.subplot(122)
+    plt.title('Inferred Label')
+    plt.ylabel(r'$x_0$')
+    plt.xlabel(r'$x_1$')
+    plt.show()
