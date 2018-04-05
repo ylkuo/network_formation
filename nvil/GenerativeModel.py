@@ -14,7 +14,7 @@ def NormalPDFmat(X,Mu,XChol,xDim):
 
 def logNormalPDFmat(X,Mu,XChol,xDim):
     ''' Use this version when X is a matrix [N x xDim] '''
-    Lambda = torhc.inverse(torch.mm(XChol,torch.t(XChol)))
+    Lambda = torch.inverse(torch.mm(XChol,torch.t(XChol)))
     XMu = X-Mu
     return (-0.5 * torch.mm(XMu, torch.mm(Lambda, torch.t(XMu)))
             + 0.5 * X.shape[0] * torch.log(det(Lambda))
@@ -84,7 +84,7 @@ class MixtureOfGaussians(GenerativeModel):
         else:
             self.RChol = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim, yDim)/5)), requires_grad=True)
 
-        if 'x0' in GenerativeParams:
+        if 'mu' in GenerativeParams:
             self.mu = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['mu'])), requires_grad=True) # set to zero for stationary distribution
         else:
             self.mu = nn.Parameter(torch.FloatTensor(np.asarray(np.random.randn(xDim, yDim))), requires_grad=True)    # set to zero for stationary distribution
