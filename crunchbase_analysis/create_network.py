@@ -190,14 +190,15 @@ class CrunchbaseData(object):
             prev_network = time_series[-1]
         return time_series
 
-    def generate_time_series_sliding_window(self, in_network, start='2008-01-01', end='2015-12-31',
-                                            min_coinvest=3, window_day=30, filter_by_nodes=None):
+    def generate_time_series_sliding_window(self, in_network, origin='1988-01-01', start='2008-01-01',
+                                            end='2015-12-31', min_coinvest=3, window_day=30,
+                                            filter_by_nodes=None):
         if filter_by_nodes is not None:
             network = in_network.subgraph(filter_by_nodes)
         else:
             network = in_network
         # filter by the max and min time in this network
-        min_time = strptime(start, '%Y-%m-%d')
+        min_time = strptime(origin, '%Y-%m-%d')
         max_time = strptime(end, '%Y-%m-%d')
         investments = []
         for i1, i2 in network.edges():
@@ -209,10 +210,12 @@ class CrunchbaseData(object):
         # sort by time
         investments_by_time = sorted(investments, key=itemgetter(2))
         # generate time series by window
-        time_series = []
         prev_network = network.copy()
         prev_network.remove_edges_from(network.edges())
+        time_series = [prev_network]
         investment_in_window = []
+        start_time = datetime.strptime(start, '%Y-%m-%d')
+        end_time = datetime.strptime(end, '%Y-%m-%d')
         for investment in investments_by_time:
             #print('new: ', investment)
             while len(investment_in_window) > 0 and \
@@ -227,10 +230,15 @@ class CrunchbaseData(object):
                     coinvest_times += 1
             if prev_network.has_edge(i1, i2): continue
             if coinvest_times < min_coinvest: continue
-            new_network = prev_network.copy()
-            new_network.add_edges_from([(i1, i2)])
-            time_series.append(new_network)
-            prev_network = time_series[-1]
+            if c_t >= start_time and c_t <= end_time:
+                # add the edges added during start and end one by one
+                new_network = prev_network.copy()
+                new_network.add_edges_from([(i1, i2)])
+                time_series.append(new_network)
+                prev_network = time_series[-1]
+            else:
+                # add the edges from original to start so that network is not empty
+                prev_network.add_edges_from([(i1, i2)])
         return time_series
 
 if __name__ == '__main__':
@@ -251,8 +259,8 @@ if __name__ == '__main__':
     # All: start='1988-01-01', end='2015-12-31'
     time_series_sliding = \
         cb_data.generate_time_series_sliding_window(coinvest_network, \
-            start='2011-01-01', end='2015-12-31', min_coinvest=1, window_day=31,
-            filter_by_nodes=top_coinvestor)
+            origin='1988-01-01', start='2010-01-01', end='2015-12-31',
+            min_coinvest=1, window_day=31, filter_by_nodes=top_coinvestor)
     pickle.dump(time_series_sliding, open('./data/' + 'observed_time_series_sliding_31day_recent_2011_2015_min1.pkl', 'wb'))
     #time_series = cb_data.generate_time_series(coinvest_network, 2, 1,
     #                                           top_coinvestor)
