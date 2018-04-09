@@ -140,7 +140,13 @@ class UtilityModel(NetworkModel):
         Any thing that is not in the fixed_params will be randomized.
         These are the parameters of the utility model that are to be inferred from the observed networks
         """
-        self.params = self.params.update(utility_params)
+        # print('utility_params',utility_params)
+        # print(self.params)
+        self.params.update(utility_params)
+        # print('self.params',self.params)
+        # x = self.params
+        # self.params = x.update(utility_params)
+        # print(self.params)
         if 'theta_0' not in utility_params:
             self.params['theta_0'] = 0  # np.random.normal(0, 1)
         if 'theta_1' not in utility_params:
