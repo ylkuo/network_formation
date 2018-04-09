@@ -205,7 +205,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         for ii in range(_N):
             utility_params = dict().fromkeys(['theta_2'])
             utility_params['theta_2'] = x_vals[ii]
-            degrees_df, y_vals[ii]['network'] = self.generate_time_series(utility_params,suuply_network_timeseries=True)
+            degrees_df, y_vals[ii]['network'] = self.generate_time_series(utility_params,suply_network_timeseries=True)
             # y_vals[ii]['network'] is used only to evaluate the log-densities it is not supplies as input to
             # the neural networks
             y_vals[ii]['degrees'] = torch.FloatTensor(degrees_df.values[:, 0:self.params['feature_length']])

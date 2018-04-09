@@ -21,3 +21,5 @@ NUM_LAYERS = 3  # number of layers in each recurrent unit
 OUTPUT_SIZE = 2 # output of the fully connected linear module at the end before the softmax
 
 number_of_features = 1 # the (global) average clustering or transitivity
+
+number_of_classes = 3
