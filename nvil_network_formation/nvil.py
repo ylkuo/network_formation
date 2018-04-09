@@ -67,7 +67,8 @@ class NVIL():
         #---------------------------------------------------------
         # instantiate our prior & recognition models
         self.recognition_model = REC_MODEL(rec_params, self.number_of_classes)
-        self.generative_model = GEN_MODEL(gen_params, self.number_of_classes)
+        print(gen_params)
+        self.generative_model = GEN_MODEL(gen_params)
 
         # NVIL Bias-correction network
         self.bias_correction = bias_correction_RNN(input_size = settings.number_of_features, hidden_size = settings.n_hidden,

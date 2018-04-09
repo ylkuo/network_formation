@@ -16,9 +16,9 @@ SENTINEL = object()
 
 class NetworkModel:
 
-    def __init__(self, params):
-        self.params = copy.deepcopy(params)
-        self.fixed_params = copy.deepcopy(params)
+    def __init__(self, network_params):
+        self.params = copy.deepcopy(network_params)
+        self.fixed_network_params = copy.deepcopy(network_params)
         self.pairwise_stable = False
 
     def init_network(self):
@@ -26,18 +26,18 @@ class NetworkModel:
         Network structure is initialized here. Initial network should be supplied in params to analyze the Crunchbase
         dataset, because we need the nodes to be already labeled.
         """
-        assert 'network' in self.fixed_params, 'The Crunchbase initial network is not supplied in params'
-        self.params['network'] = copy.deepcopy(self.fixed_params['network'])
-        if 'size' in self.fixed_params:
+        assert 'network' in self.fixed_network_params, 'The Crunchbase initial network is not supplied in params'
+        self.params['network'] = copy.deepcopy(self.fixed_network_params['network'])
+        if 'size' in self.fixed_network_params:
             assert self.params['size'] == NX.number_of_nodes(self.params['network']), 'network size mismatch'
         else:
             self.params['size'] = NX.number_of_nodes(self.params['network'])
 
-        if 'input_type' not in self.fixed_params:
+        if 'input_type' not in self.fixed_network_params:
             self.params['input_type'] = 'degree_sequence'
             self.params['feature_length'] = self.params['size']
 
-        if 'feature_length' not in self.fixed_params:
+        if 'feature_length' not in self.fixed_network_params:
             if self.params['input_type'] == 'transitivity' or 'avg_clustering':
                 self.params['feature_length'] = 1
             elif self.params['input_type'] == 'clustering' or 'degree_sequence':
@@ -49,7 +49,7 @@ class NetworkModel:
         r"""
         observable and unobservable node and edge attributes are initialized here
         """
-        assert 'positions' in self.fixed_params, 'The Crunchbase node positions are not supplied in params'
+        assert 'positions' in self.fixed_network_params, 'The Crunchbase node positions are not supplied in params'
 
         potential_edge_keys = list(self.params['network'].edges()) + list(NX.non_edges(self.params['network']))
 
@@ -132,15 +132,15 @@ class NetworkModel:
 
 class UtilityModel(NetworkModel):
 
-    def __init__(self, params):
-        super(UtilityModel, self).__init__(params)
+    def __init__(self, network_params):
+        super(UtilityModel, self).__init__(network_params)
 
     def set_utility_params(self, utility_params):
         r"""
         Any thing that is not in the fixed_params will be randomized.
         These are the parameters of the utility model that are to be inferred from the observed networks
         """
-        self.params = utility_params
+        self.params = self.params.update(utility_params)
         if 'theta_0' not in utility_params:
             self.params['theta_0'] = 0  # np.random.normal(0, 1)
         if 'theta_1' not in utility_params:

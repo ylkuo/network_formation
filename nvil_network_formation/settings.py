@@ -4,7 +4,15 @@
 
 # The generative model settings
 
-params = dict()
+import networkx as NX
+
+gen_model_params = dict()
+
+
+gen_model_params['size'] = 20
+gen_model_params['network'] = NX.empty_graph(gen_model_params['size'])
+gen_model_params['positions'] = NX.random_layout(gen_model_params['network'])
+
 # {
 #         'theta_0': 0,  # -0.5,
 #         'theta_1': 0.25,  # populationSize,

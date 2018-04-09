@@ -9,6 +9,8 @@ from matplotlib import pyplot as plt
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
+import settings
+
 if __name__ == '__main__':
     # load dataset
     dataset = NetworkFormationDataset()
@@ -26,7 +28,7 @@ if __name__ == '__main__':
     rec_params = dict([('NN_Params', NN_Params)])
     xdim = dataset.get_dim()
     gen_params = dict([])
-    model = NVIL(opt_params, gen_params, NetworkFormationGenerativeModel,
+    model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
                  rec_params, NetworkFormationRecognition, xdim, learning_rate=3e-4)
 
     km_pi = [1/3, 1/3 , 1/3]
