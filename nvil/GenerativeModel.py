@@ -117,6 +117,7 @@ class MixtureOfGaussians(GenerativeModel):
 
     def evaluateLogDensity(self, h, Y):
         X = torch.t(h.nonzero())[1]
+
         log_density = []
         for count in range(Y.shape[0]):
             LogDensityVeci = logNormalPDF(Y[count], torch.squeeze(self.mu[X[count]]), torch.squeeze(self.RChol[X[count]]))

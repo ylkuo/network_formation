@@ -21,4 +21,4 @@ class GMMDataset(Dataset):
         return self.len
 
     def get_dim(self):
-    	return (self.xdim, self.ydim)
+        return (self.xdim, self.ydim)

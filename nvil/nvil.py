@@ -101,6 +101,8 @@ class NVIL():
             for data_x, data_y in data_loader:
                 y = Variable(data_y).float()
                 hsamp_np = self.mrec.getSample(y)
+                # print('y',y)
+                # print('hsamp_np',hsamp_np)
                 L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(y, hsamp_np)
                 self.update_cv(l, y, hsamp_np)
                 self.update_params(y, l, p_yh, q_hgy, C_out)
