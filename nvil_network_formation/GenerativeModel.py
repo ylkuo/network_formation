@@ -5,7 +5,7 @@ import numpy as np
 import random as RD
 import networkx as NX
 import torch.nn as nn
-import scipy.stats.norm as PHI
+import scipy.stats as ST
 
 RD.seed()
 np.random.seed()
@@ -220,6 +220,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         self.pi = self.pi_un / self.pi_un.sum()
 
     def non_edge_probability(self, non_edge, lastnetwork, theta_2):
+        PHI = ST.norm
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[non_edge[0]]['position'][0] - \
                                                  lastnetwork.node[non_edge[1]]['position'][0])
 
@@ -234,6 +235,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         return PHI.cdf(epsilon_upperbound)
 
     def edge_probability(self, edge, network_time_series, lastnetwork, theta_2):
+        PHI = ST.norm
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[edge[0]]['position'][0] - \
                                                  lastnetwork.node[edge[1]]['position'][0])
 
