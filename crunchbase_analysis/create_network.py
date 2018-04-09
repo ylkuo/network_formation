@@ -190,6 +190,16 @@ class CrunchbaseData(object):
             prev_network = time_series[-1]
         return time_series
 
+    def get_top_coinvestor_by_country(self, in_network, num_investors=10, countries=['USA']):
+        top_coinvestor = []
+        for country in countries:
+            subgraph = in_network.subgraph([n for n, attrdict in in_network.node.items() \
+                if attrdict['location']['country'] == country])
+            coinvestors = sorted(subgraph.degree(subgraph.nodes),
+                                 key=itemgetter(1), reverse=True)[:num_investors]
+            top_coinvestor.extend(coinvestors)
+        return top_coinvestor
+
     def generate_time_series_sliding_window(self, in_network, origin='1988-01-01', start='2008-01-01',
                                             end='2015-12-31', min_coinvest=3, window_day=30,
                                             filter_by_nodes=None):
@@ -252,8 +262,7 @@ if __name__ == '__main__':
     print(sorted(invest_network.out_degree(invest_network.nodes),
                  key=itemgetter(1), reverse=True)[:20])
     # get time series for top coinvestors
-    top_coinvestor = sorted(coinvest_network.degree(coinvest_network.nodes),
-                            key=itemgetter(1), reverse=True)[:20]
+    top_coinvestor = cb_data.get_top_coinvestor_by_country(coinvest_network, num_investors=10, countries=['USA', 'CHN'])
     top_coinvestor = [inv[0] for inv in top_coinvestor]
     # Great recession: start='2007-12-01', end='2009-06-30'
     # All: start='1988-01-01', end='2015-12-31'
