@@ -1,11 +1,14 @@
 import pandas as pd
 import copy
 import torch
+import math
 import numpy as np
 import random as RD
 import networkx as NX
 import torch.nn as nn
 import scipy.stats as ST
+
+from torch.distributions import Normal
 
 RD.seed()
 np.random.seed()
@@ -149,8 +152,8 @@ class UtilityModel(NetworkModel):
         # print(self.params)
         if 'theta_0' not in utility_params:
             self.params['theta_0'] = 0  # np.random.normal(0, 1)
-        if 'theta_1' not in utility_params:
-            self.params['theta_1'] = 0  # np.random.normal(0, 1)
+        #if 'theta_1' not in utility_params:
+        #    self.params['theta_1'] = 0  # np.random.normal(0, 1)
 
         assert 'theta_2' in utility_params, "theta_2 is not set!"
             # self.params['theta_2'] = RD.choice(
@@ -225,8 +228,17 @@ class NetworkFormationGenerativeModel(UtilityModel):
     def update_pi(self):
         self.pi = self.pi_un / self.pi_un.sum()
 
+    def normal_cdf(self, value):
+        return 0.5 * (1 + torch.erf((value) / math.sqrt(2)))
+
     def non_edge_probability(self, non_edge, lastnetwork, theta_2):
-        PHI = ST.norm
+        utility_params = dict.fromkeys(['theta_0','theta_1','theta_2','theta_3','sparsity'])
+        utility_params['theta_0'] = 0
+        utility_params['theta_2'] = theta_2
+        utility_params['theta_3'] = 1
+        utility_params['sparsity'] = 500 * np.sqrt(8 / 20)
+        self.set_utility_params(utility_params)
+
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[non_edge[0]]['position'][0] - \
                                                  lastnetwork.node[non_edge[1]]['position'][0])
 
@@ -238,10 +250,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
         epsilon_upperbound = - self.params['theta_0'] - \
                              theta_2 * (1.0 * (len(list_common_neighbors) > 0)) + \
                              (1 / self.params['sparsity']) * distance
-        return PHI.cdf(epsilon_upperbound)
+        return self.normal_cdf(epsilon_upperbound.type(torch.FloatTensor))
 
     def edge_probability(self, edge, network_time_series, lastnetwork, theta_2):
-        PHI = ST.norm
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[edge[0]]['position'][0] - \
                                                  lastnetwork.node[edge[1]]['position'][0])
 
@@ -271,16 +282,16 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
             epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
 
-            probability_of_the_edge = (PHI.cdf(epsilon_upperbound) - PHI.cdf(epsilon_lowerbound)) + \
-                                      product_term * (1 - PHI.cdf(epsilon_upperbound))
+            probability_of_the_edge = (self.normal_cdf(epsilon_upperbound) - self.normal_cdf(epsilon_lowerbound)) + \
+                                      product_term * (1 - self.normal_cdf(epsilon_upperbound))
 
         return probability_of_the_edge
 
     def evaluateLogDensity(self, h, Y):
         X = torch.t(h.nonzero())[1]
         log_density = []
-        for count in range(Y.shape[0]):
-            network_time_series = Y[count]['network']
+        for count in range(1): #range(Y.shape[0]):
+            network_time_series = Y['network'] #[count]['network']
             last_network = network_time_series[-1]
             unformed_edges = NX.non_edges(last_network)
             formed_edges = NX.edges(last_network)

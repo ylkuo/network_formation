@@ -27,7 +27,7 @@ class recognition_RNN(nn.Module):
 
     def forward(self, input, hidden):
         output_r, _ = self.rec(input, hidden)  # the recurrent units output
-        output_n = self.nonlin(output_r[-1])  # non-linearity after the recurrent units
+        output_n = self.nonlinearity1(output_r[-1])  # non-linearity after the recurrent units
         output_l = self.lin2(self.lin1(output_n))  # second linear layer
         output = self.nonlinearity2(output_l)  # final non-linearity is a softmax
         return output
@@ -74,7 +74,7 @@ class NetworkFormationRecognition(recognition_RNN):
         # note that each sample is a dictionary with two keys: 'degrees' and 'network_time_series', only the degrees is
         # supplied as input to the recognition network
         hidden0 = self.initHidden()
-        input_degrees = Y['degrees']
+        input_degrees = Y['degrees'].unsqueeze(0)
         self.h = self.__call__(Variable(input_degrees), hidden0)
         # self.h = self.forward(input_degrees)  # this is the (classification) neural network output,
         # posterior probabilities for each class
@@ -89,6 +89,8 @@ class NetworkFormationRecognition(recognition_RNN):
     def evalLogDensity(self, hsamp, Y):
 
         ''' We assume each sample is a single multinomial sample from the latent h, so each sample is an integer class.'''
-        self.h = self.forward(Y['degrees'])
+        hidden0 = self.initHidden()
+        input_degrees = Y['degrees'].unsqueeze(0)
+        self.h = self.__call__(Variable(Y['degrees']), hidden0)
         return torch.log(torch.sum(self.h*hsamp, 1))
 

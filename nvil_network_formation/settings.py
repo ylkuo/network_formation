@@ -28,8 +28,8 @@ n_hidden = 16  # number of units in each layer of the recurrent unit
 
 NUM_LAYERS = 3  # number of layers in each recurrent unit
 
-OUTPUT_SIZE = 2 # output of the fully connected linear module at the end before the softmax
+OUTPUT_SIZE = 3 # output of the fully connected linear module at the end before the softmax
 
-number_of_features = 1 # the (global) average clustering or transitivity
+number_of_features = 20 # the (global) average clustering or transitivity
 
 number_of_classes = 3
