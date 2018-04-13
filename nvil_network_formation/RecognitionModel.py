@@ -7,7 +7,7 @@ import numpy as np
 class recognition_RNN(nn.Module):
     def __init__(self, input_size = settings.number_of_features, hidden_size = settings.n_hidden,
                  num_layers = settings.NUM_LAYERS, output_size = settings.OUTPUT_SIZE,nCUnits = 100):
-        super(RNN, self).__init__()
+        super(recognition_RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
