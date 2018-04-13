@@ -66,7 +66,7 @@ class NVIL():
 
         #---------------------------------------------------------
         # instantiate our prior & recognition models
-        self.recognition_model = REC_MODEL(rec_params, self.number_of_classes)
+        self.recognition_model = REC_MODEL(self.number_of_classes)
         print(gen_params)
         self.generative_model = GEN_MODEL(gen_params)
 
@@ -131,9 +131,8 @@ class NVIL():
             sys.stdout.flush()
             batch_counter = 0
             for data_x, data_y in data_loader:
-                y = Variable(data_y).float()
-                hsamp_np = self.recognition_model.getSample(y)
-                L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(y, hsamp_np)
+                hsamp_np = self.recognition_model.getSample(data_y)
+                L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, hsamp_np)
                 self.update_cv(l)
                 self.update_params(data_y.shape[0], l, p_yh, q_hgy, C_out)
                 if np.mod(batch_counter, 10) == 0:
