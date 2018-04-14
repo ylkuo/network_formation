@@ -272,7 +272,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
         elif len(list_common_neighbors) > 0:
             product_term = 1
             for i in range(len(network_time_series)):
-                number_of_non_edges = len(NX.non_edges(network_time_series[i]))
+                # print('network_time_series')
+                # print(len(list(NX.non_edges(network_time_series[i]))))
+                number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
                 if edge in NX.non_edges(network_time_series[i]):
                     product_term *= (1 - 1 / number_of_non_edges)
                 else:
