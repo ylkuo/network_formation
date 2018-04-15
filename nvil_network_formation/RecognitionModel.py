@@ -75,6 +75,8 @@ class NetworkFormationRecognition(recognition_RNN):
         # supplied as input to the recognition network
         hidden0 = self.initHidden()
         input_degrees = Y['degrees'].unsqueeze(0)
+        input_degrees = input_degrees.permute(1, 0, 2)
+        print('input_degrees',input_degrees)
         self.h = self.__call__(Variable(input_degrees), hidden0)
         # self.h = self.forward(input_degrees)  # this is the (classification) neural network output,
         # posterior probabilities for each class
@@ -91,6 +93,7 @@ class NetworkFormationRecognition(recognition_RNN):
         ''' We assume each sample is a single multinomial sample from the latent h, so each sample is an integer class.'''
         hidden0 = self.initHidden()
         input_degrees = Y['degrees'].unsqueeze(0)
-        self.h = self.__call__(Variable(Y['degrees']), hidden0)
+        input_degrees = input_degrees.permute(1, 0, 2)
+        self.h = self.__call__(Variable(input_degrees), hidden0)
         return torch.log(torch.sum(self.h*hsamp, 1))
 

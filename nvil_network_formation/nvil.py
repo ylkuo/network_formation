@@ -12,7 +12,7 @@ from torch.autograd import Variable
 
 
 class bias_correction_RNN(nn.Module):
-    def __init__(self, input_size=settings.number_of_classes, hidden_size=settings.n_hidden,
+    def __init__(self, input_size=settings.number_of_features, hidden_size=settings.n_hidden,
                  num_layers=settings.NUM_LAYERS, output_size=1):
         super(bias_correction_RNN, self).__init__()
         self.hidden_size = hidden_size
@@ -35,6 +35,7 @@ class bias_correction_RNN(nn.Module):
         output_n = self.nonlin(output_r[-1])  # non-linearity after the recurrent units
         # self.softmax(self.out(output[-1])) #F.log_softmax(self.out(output[-1]))
         output = self.lin2(self.lin1(output_n)) # final linear layers
+        print('output of bias correction RNN',output)
         return output
 
     def initHidden(self):
@@ -57,7 +58,7 @@ class NVIL():
                  opt_params, # dictionary of optimization parameters
                  gen_params, # dictionary of generative model parameters
                  GEN_MODEL,  # class that inherits from GenerativeModel
-                 rec_params, # dictionary of approximate posterior ("recognition model") parameters
+                 # rec_params, # dictionary of approximate posterior ("recognition model") parameters
                  REC_MODEL, # class that inherits from RecognitionModel
                  number_of_classes=2, # dimensionality of latent state
                  learning_rate=3e-4):
@@ -67,12 +68,12 @@ class NVIL():
         #---------------------------------------------------------
         # instantiate our prior & recognition models
         self.recognition_model = REC_MODEL(self.number_of_classes)
-        print(gen_params)
+        # print(gen_params)
         self.generative_model = GEN_MODEL(gen_params)
 
         # NVIL Bias-correction network
         self.bias_correction = bias_correction_RNN(input_size = settings.number_of_features, hidden_size = settings.n_hidden,
-                 num_layers = settings.NUM_LAYERS, output_size = settings.OUTPUT_SIZE)
+                 num_layers = settings.NUM_LAYERS, output_size = 1)
  
         # Set NVIL params
         self.c = torch.FloatTensor([opt_params['c0']])
@@ -87,16 +88,23 @@ class NVIL():
     def get_nvil_cost(self, Y, hsamp):
         # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
         # Evaluate the recognition model density Q_\phi(h_i | y_i)
+        # print('hsamp fed into recognition model eval log density',hsamp)
+        # print('Y fed into recognition model eval log density', Y)
         q_hgy = self.recognition_model.evalLogDensity(hsamp, Y)
 
         # Evaluate the generative model density P_\theta(y_i , h_i)
-        p_yh =  self.generative_model.evaluateLogDensity(hsamp, Y)
-
-        hidden0 = self.initHidden()
-        input_degrees = Y['degrees']
+        p_yh = self.generative_model.evaluateLogDensity(hsamp, Y)
+        hidden0 = self.bias_correction.initHidden()
+        input_degrees = Y['degrees'].unsqueeze(0)
+        input_degrees = input_degrees.permute(1, 0, 2)
+        print('input_degrees in bias correction',input_degrees)
         C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
+        print('C_out in bias correction',C_out)
         L = p_yh.mean() - q_hgy.mean()
+        print('q_hgy', q_hgy)
+        print('p_yh', p_yh)
         l = p_yh - q_hgy - C_out
+        print('l',l)
         return [L, l, p_yh, q_hgy, C_out]
 
     def update_cv(self, l):
@@ -114,7 +122,10 @@ class NVIL():
             else:
                 lii = l[i].data - self.c
             lii = Variable(torch.FloatTensor(lii), requires_grad=False)
+            print('p_yh', p_yh)
             loss_p = p_yh[i] * -1
+            print('p_yh[i]', p_yh[i])
+            print('loss_p',loss_p)
             loss_p.backward(retain_graph=True)
             loss_q = q_hgy[i] * lii * -1
             loss_q.backward(retain_graph=True)
@@ -131,10 +142,14 @@ class NVIL():
             sys.stdout.flush()
             batch_counter = 0
             for data_x, data_y in data_loader:
+                print('data_x', data_x)
+                print('data_y', data_y)
                 hsamp_np = self.recognition_model.getSample(data_y)
+                print('hsamp_np',hsamp_np)
                 L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, hsamp_np)
                 self.update_cv(l)
-                self.update_params(data_y.shape[0], l, p_yh, q_hgy, C_out)
+                print('data_y fed into update_params',data_y)
+                self.update_params(1, l, p_yh, q_hgy, C_out)# data_y.shape[0] for batch_size
                 if np.mod(batch_counter, 10) == 0:
                     cx = self.c
                     vx = self.v

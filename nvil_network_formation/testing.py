@@ -24,15 +24,15 @@ if __name__ == '__main__':
 
     # build model
     opt_params = dict({'c0': -0.0, 'v0': 1.0, 'alpha': 0.9})
-    NN_Params = dict([])
-    rec_params = dict([('NN_Params', NN_Params)])
+    # NN_Params = dict([])
+    # rec_params = dict([('NN_Params', NN_Params)])
     xdim = dataset.get_dim()
     gen_params = dict([])
     model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
-                 rec_params, NetworkFormationRecognition, xdim, learning_rate=3e-4)
+                 NetworkFormationRecognition, xdim, learning_rate=3e-4)
 
     km_pi = [1/3, 1/3 , 1/3]
-    model.generative_model.pi_un.data = torch.FloatTensor(km_pi)
+    model.generative_model.pi.data = torch.FloatTensor(km_pi)
   
     # fit the model
     costs = model.fit(dataset, max_epochs=5)

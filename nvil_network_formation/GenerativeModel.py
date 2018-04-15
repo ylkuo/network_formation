@@ -193,12 +193,15 @@ class NetworkFormationGenerativeModel(UtilityModel):
         self.params['input_type'] = 'degree_sequence'
 
         # Mixture distribution
+        print('GenerativeParams', GenerativeParams)
         if 'pi' in GenerativeParams:
+
             self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['pi'])), requires_grad=True)
         else:
-            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(1))), requires_grad=True)
+            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(3))), requires_grad=True)
             # what is the 100*??? should n't it be np.ones(xDim)
         self.pi = self.pi_un / self.pi_un.sum()
+        print('self.pi in init NetFormationGenModel',self.pi)
 
     def sampleXY(self, _N):
         _pi = np.asarray(torch.clamp(self.pi, 0.001, 0.999).data)
@@ -225,6 +228,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
             yield params
 
     def update_pi(self):
+        print('self.pi in update_pi',self.pi)
         self.pi = self.pi_un / self.pi_un.sum()
 
     def normal_cdf(self, value):
@@ -277,7 +281,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # on the initial condition)
         elif len(list_common_neighbors) == 0:
             epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
-            probability_of_the_edge = self.normal_cdf(epsilon_upperbound)
+            print(epsilon_upperbound,epsilon_upperbound.shape)
+            probability_of_the_edge = self.normal_cdf(epsilon_upperbound) # needs to be fixed!!
         elif len(list_common_neighbors) > 0:
             product_term = 1
             for i in range(len(network_time_series)):
@@ -289,22 +294,29 @@ class NetworkFormationGenerativeModel(UtilityModel):
                 else:
                     break
 
+            # print('theta_2',theta_2)
             epsilon_lowerbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance - theta_2 * (1.0)
-            # this epsilon_lowerbound is wrapped around by too many [[[[[]]]]]
-            epsilon_lowerbound = np.reshape(epsilon_lowerbound, 1)[-1]
+            # it has too many [[[[[]]]]]
+            # print(epsilon_lowerbound,epsilon_lowerbound.shape)
+            epsilon_lowerbound = np.reshape(epsilon_lowerbound, 1)[-1]  # taking epsilon_lowerbound out of [[[[[]]]]]
+
+            # print(epsilon_lowerbound,epsilon_lowerbound.shape)
 
             epsilon_upperbound = Variable(torch.FloatTensor([- self.params['theta_0'] +
                                                              (1 / self.params['sparsity']) * distance]))
 
-            print('epsilon_lowerbound', epsilon_lowerbound)  # it has too many [[[[[]]]]]
-            print('epsilon_upperbound', epsilon_upperbound)   # needed to be wrapped inside a variable
+            # print('epsilon_lowerbound', epsilon_lowerbound)  # it has too many [[[[[]]]]]
+            # print('epsilon_upperbound', epsilon_upperbound)   # needed to be wrapped inside a variable
             probability_of_the_edge = (self.normal_cdf(epsilon_upperbound) - self.normal_cdf(epsilon_lowerbound)) + \
                                       product_term * (1 - self.normal_cdf(epsilon_upperbound))
 
         return probability_of_the_edge
 
     def evaluateLogDensity(self, h, Y):
+        # print('Y',Y)
+        # print('h',h)
         X = torch.t(h.nonzero())[1]
+        # print('X',X)
         log_density = []
         for count in range(1): #range(Y.shape[0]):
             network_time_series = Y['network'] #[count]['network']
@@ -314,11 +326,16 @@ class NetworkFormationGenerativeModel(UtilityModel):
             LogDensityVeci = 0
 
             for non_edge in unformed_edges:
-                LogDensityVeci += torch.log(self.non_edge_probability(non_edge, last_network, X[count]))
+                LogDensityVeci += torch.log(self.non_edge_probability(non_edge, last_network, X)) # X[count]
 
             for edge in formed_edges:
-                LogDensityVeci += torch.log(self.edge_probability(edge, network_time_series, last_network, X[count]))
+                LogDensityVeci += torch.log(self.edge_probability(edge, network_time_series, last_network, X)) # X[count]
 
-            log_density += [LogDensityVeci + torch.log(self.pi[X[count]])]
+
+            # print('pi',self.pi)
+            # print('X',X)
+            # print('pi', self.pi)
+            # print('self.pi[X]', self.pi[X])
+            log_density += [LogDensityVeci + torch.log(self.pi[X])] # X[count]
 
         return torch.squeeze(torch.stack(log_density))

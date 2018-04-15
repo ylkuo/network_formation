@@ -58,11 +58,12 @@ class NVIL():
 
         # Evaluate the recognition model density Q_\phi(h_i | y_i)
         q_hgy = self.mrec.evalLogDensity(hsamp, Y)
-        #print(q_hgy)
+        # print('q_hgy',q_hgy)
         # Evaluate the generative model density P_\theta(y_i , h_i)
         p_yh =  self.mprior.evaluateLogDensity(hsamp, Y)
-        #print(p_yh)
+        # print('p_yh',p_yh)
         C_out = torch.squeeze(self.C_nn.forward(Y))
+        # print('C_out',C_out)
         L = p_yh.mean() - q_hgy.mean()
         l = p_yh - q_hgy - C_out
         return [L, l, p_yh, q_hgy, C_out]
