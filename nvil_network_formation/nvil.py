@@ -32,10 +32,11 @@ class bias_correction_RNN(nn.Module):
 
     def forward(self, input, hidden):
         output_r, _ = self.rec(input, hidden)  # the recurrent units output
-        output_n = self.nonlin(output_r[-1])  # non-linearity after the recurrent units
+        output_r.view(-1, self.hidden_size)
+        output_n = self.nonlin(output_r)  # non-linearity after the recurrent units
         # self.softmax(self.out(output[-1])) #F.log_softmax(self.out(output[-1]))
         output = self.lin2(self.lin1(output_n)) # final linear layers
-        print('output of bias correction RNN',output)
+        #print('output of bias correction RNN',output)
         return output
 
     def initHidden(self):
@@ -97,14 +98,14 @@ class NVIL():
         hidden0 = self.bias_correction.initHidden()
         input_degrees = Y['degrees'].unsqueeze(0)
         input_degrees = input_degrees.permute(1, 0, 2)
-        print('input_degrees in bias correction',input_degrees)
+        #print('input_degrees in bias correction',input_degrees)
         C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
-        print('C_out in bias correction',C_out)
+        #print('C_out in bias correction',C_out)
         L = p_yh.mean() - q_hgy.mean()
-        print('q_hgy', q_hgy)
-        print('p_yh', p_yh)
+        #print('q_hgy', q_hgy)
+        #print('p_yh', p_yh)
         l = p_yh - q_hgy - C_out
-        print('l',l)
+        #print('l',l)
         return [L, l, p_yh, q_hgy, C_out]
 
     def update_cv(self, l):
@@ -122,10 +123,7 @@ class NVIL():
             else:
                 lii = l[i].data - self.c
             lii = Variable(torch.FloatTensor(lii), requires_grad=False)
-            print('p_yh', p_yh)
             loss_p = p_yh[i] * -1
-            print('p_yh[i]', p_yh[i])
-            print('loss_p',loss_p)
             loss_p.backward(retain_graph=True)
             loss_q = q_hgy[i] * lii * -1
             loss_q.backward(retain_graph=True)
@@ -142,13 +140,13 @@ class NVIL():
             sys.stdout.flush()
             batch_counter = 0
             for data_x, data_y in data_loader:
-                print('data_x', data_x)
-                print('data_y', data_y)
+                #print('data_x', data_x)
+                #print('data_y', data_y)
                 hsamp_np = self.recognition_model.getSample(data_y)
-                print('hsamp_np',hsamp_np)
+                #print('hsamp_np',hsamp_np)
                 L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, hsamp_np)
                 self.update_cv(l)
-                print('data_y fed into update_params',data_y)
+                #print('data_y fed into update_params',data_y)
                 self.update_params(1, l, p_yh, q_hgy, C_out)# data_y.shape[0] for batch_size
                 if np.mod(batch_counter, 10) == 0:
                     cx = self.c

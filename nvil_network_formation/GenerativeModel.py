@@ -228,7 +228,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
             yield params
 
     def update_pi(self):
-        print('self.pi in update_pi',self.pi)
+        #print('self.pi in update_pi',self.pi)
         self.pi = self.pi_un / self.pi_un.sum()
 
     def normal_cdf(self, value):
@@ -281,7 +281,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # on the initial condition)
         elif len(list_common_neighbors) == 0:
             epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
-            print(epsilon_upperbound,epsilon_upperbound.shape)
+            #print(epsilon_upperbound,epsilon_upperbound.shape)
             probability_of_the_edge = self.normal_cdf(epsilon_upperbound) # needs to be fixed!!
         elif len(list_common_neighbors) > 0:
             product_term = 1
@@ -317,25 +317,24 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('h',h)
         X = torch.t(h.nonzero())[1]
         # print('X',X)
-        log_density = []
-        for count in range(1): #range(Y.shape[0]):
-            network_time_series = Y['network'] #[count]['network']
-            last_network = network_time_series[-1]
-            unformed_edges = NX.non_edges(last_network)
-            formed_edges = NX.edges(last_network)
-            LogDensityVeci = 0
+        #log_density = []
+        #for count in range(1): #range(Y.shape[0]):
+        network_time_series = Y['network'] #[count]['network']
+        last_network = network_time_series[-1]
+        unformed_edges = NX.non_edges(last_network)
+        formed_edges = NX.edges(last_network)
+        LogDensityVeci = 0
 
-            for non_edge in unformed_edges:
-                LogDensityVeci += torch.log(self.non_edge_probability(non_edge, last_network, X)) # X[count]
+        for non_edge in unformed_edges:
+            LogDensityVeci += torch.log(self.non_edge_probability(non_edge, last_network, X)) # X[count]
 
-            for edge in formed_edges:
-                LogDensityVeci += torch.log(self.edge_probability(edge, network_time_series, last_network, X)) # X[count]
+        for edge in formed_edges:
+            LogDensityVeci += torch.log(self.edge_probability(edge, network_time_series, last_network, X)) # X[count]
 
+        # print('pi',self.pi)
+        # print('X',X)
+        # print('pi', self.pi)
+        # print('self.pi[X]', self.pi[X])
+        log_density = LogDensityVeci + torch.log(self.pi[X]) # X[count]
 
-            # print('pi',self.pi)
-            # print('X',X)
-            # print('pi', self.pi)
-            # print('self.pi[X]', self.pi[X])
-            log_density += [LogDensityVeci + torch.log(self.pi[X])] # X[count]
-
-        return torch.squeeze(torch.stack(log_density))
+        return log_density #torch.squeeze(torch.stack(log_density))
