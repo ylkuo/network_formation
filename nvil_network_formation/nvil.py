@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
+from dataset import NetworkIterator
 
 
 class bias_correction_RNN(nn.Module):
@@ -32,12 +33,13 @@ class bias_correction_RNN(nn.Module):
 
     def forward(self, input, hidden):
         output_r, _ = self.rec(input, hidden)  # the recurrent units output
-        output_r.view(-1, self.hidden_size)
+        #print('output_r', output_r.shape)
+        output_r = output_r.view(-1, self.hidden_size)
         output_n = self.nonlin(output_r)  # non-linearity after the recurrent units
         # self.softmax(self.out(output[-1])) #F.log_softmax(self.out(output[-1]))
         output = self.lin2(self.lin1(output_n)) # final linear layers
         #print('output of bias correction RNN',output)
-        return output
+        return output[-1]
 
     def initHidden(self):
         return (Variable(torch.zeros(self.num_layers, 1, self.hidden_size)),
@@ -100,7 +102,7 @@ class NVIL():
         input_degrees = input_degrees.permute(1, 0, 2)
         #print('input_degrees in bias correction',input_degrees)
         C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
-        #print('C_out in bias correction',C_out)
+        #print('C_out',C_out)
         L = p_yh.mean() - q_hgy.mean()
         #print('q_hgy', q_hgy)
         #print('p_yh', p_yh)
@@ -132,10 +134,11 @@ class NVIL():
         self.opt.step()
         self.generative_model.update_pi()
 
-    def fit(self, data_loader, max_epochs=100):
+    def fit(self, dataset, max_epochs=100):
         avg_costs = []
         epoch = 0
         while epoch < max_epochs:
+            data_loader = NetworkIterator(dataset)
             sys.stdout.write("\r%0.2f%%\n" % (epoch * 100./ max_epochs))
             sys.stdout.flush()
             batch_counter = 0

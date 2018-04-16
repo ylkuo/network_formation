@@ -1,6 +1,6 @@
 # Use NVIL to make inference about the structural homophily in the network formation model
 
-from dataset import NetworkIterator
+from dataset import NetworkDataset, NetworkIterator
 from GenerativeModel import NetworkFormationGenerativeModel
 from nvil import *
 from RecognitionModel import NetworkFormationRecognition
@@ -13,7 +13,7 @@ import settings
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkIterator(N=100, batch_size=1)
+    dataset = NetworkDataset(N=100)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
     # training_samples_loader = utils_data.DataLoader(training_samples, batch_size,collate_fn=PadCollate(dim=0))

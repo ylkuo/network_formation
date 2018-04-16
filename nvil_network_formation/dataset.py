@@ -4,30 +4,34 @@ from torch.utils.data import Dataset
 
 import settings
 
-class NetworkIterator(object):
-    def __init__(self, N=100, batch_size=1):
+class NetworkDataset(object):
+    def __init__(self, N=100):
         self.len = N
         self.network_formation = NetworkFormationGenerativeModel(settings.gen_model_params)
         [xsamp, ysamp] = self.network_formation.sampleXY(N)
         self.xsamp = xsamp
         self.ysamp = ysamp
-        self.batch = batch_size
-        self.current = 0
 
     def get_dim(self):
         self.xdim = 3
         return (self.xdim)
 
+class NetworkIterator(object):
+    def __init__(self, dataset, batch_size=1):
+        self.dataset = dataset
+        self.batch = batch_size
+        self.current = 0
+
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self.current >= self.len:
+        if self.current >= self.dataset.len:
             raise StopIteration
         else:
             index = self.current
             self.current += 1
-            return (self.xsamp[index], self.ysamp[index])
+            return (self.dataset.xsamp[index], self.dataset.ysamp[index])
 
 
 
