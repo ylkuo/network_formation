@@ -7,7 +7,7 @@ import random as RD
 import networkx as NX
 import torch.nn as nn
 from torch.autograd import Variable
-
+import settings
 
 RD.seed()
 np.random.seed()
@@ -193,15 +193,15 @@ class NetworkFormationGenerativeModel(UtilityModel):
         self.params['input_type'] = 'degree_sequence'
 
         # Mixture distribution
-        print('GenerativeParams', GenerativeParams)
+        # print('GenerativeParams', GenerativeParams)
         if 'pi' in GenerativeParams:
 
             self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['pi'])), requires_grad=True)
         else:
-            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(3))), requires_grad=True)
+            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(settings.number_of_classes))), requires_grad=True)
             # what is the 100*??? should n't it be np.ones(xDim)
         self.pi = self.pi_un / self.pi_un.sum()
-        print('self.pi in init NetFormationGenModel',self.pi)
+        # print('self.pi in init NetFormationGenModel',self.pi)
 
     def sampleXY(self, _N):
         _pi = np.asarray(torch.clamp(self.pi, 0.001, 0.999).data)
@@ -266,6 +266,13 @@ class NetworkFormationGenerativeModel(UtilityModel):
         return self.normal_cdf(epsilon_upperbound)#.type(torch.FloatTensor)
 
     def edge_probability(self, edge, network_time_series, lastnetwork, theta_2):
+        utility_params = dict.fromkeys(['theta_0', 'theta_1', 'theta_2', 'theta_3', 'sparsity'])
+        utility_params['theta_0'] = 0
+        utility_params['theta_2'] = theta_2
+        utility_params['theta_3'] = 1
+        utility_params['sparsity'] = 500 * np.sqrt(8 / 20)
+        self.set_utility_params(utility_params)
+
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[edge[0]]['position'][0] - \
                                                  lastnetwork.node[edge[1]]['position'][0])
 
@@ -281,7 +288,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # on the initial condition)
         elif len(list_common_neighbors) == 0:
             epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
-            #print(epsilon_upperbound,epsilon_upperbound.shape)
+            # print('epsilon_upperbound:', epsilon_upperbound,epsilon_upperbound.shape)
+            epsilon_upperbound = Variable(torch.FloatTensor([epsilon_upperbound]))
+            # print('epsilon_upperbound:', epsilon_upperbound,epsilon_upperbound.shape)
             probability_of_the_edge = self.normal_cdf(epsilon_upperbound) # needs to be fixed!!
         elif len(list_common_neighbors) > 0:
             product_term = 1
@@ -337,6 +346,6 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('X',X)
         # print('pi', self.pi)
         # print('self.pi[X]', self.pi[X])
-        log_density = (LogDensityVeci + torch.log(self.pi[X]))/total_edges # X[count]
+        log_density = (LogDensityVeci + torch.log(self.pi[X]))#/total_edges # /total_edges X[count]
 
         return log_density #torch.squeeze(torch.stack(log_density))

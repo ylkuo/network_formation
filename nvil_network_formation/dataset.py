@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 import settings
 
 class NetworkDataset(object):
-    def __init__(self, N=100):
+    def __init__(self, N=300):
         self.len = N
         self.network_formation = NetworkFormationGenerativeModel(settings.gen_model_params)
         [xsamp, ysamp] = self.network_formation.sampleXY(N)
@@ -13,7 +13,7 @@ class NetworkDataset(object):
         self.ysamp = ysamp
 
     def get_dim(self):
-        self.xdim = 3
+        self.xdim = settings.number_of_classes
         return (self.xdim)
 
 class NetworkIterator(object):

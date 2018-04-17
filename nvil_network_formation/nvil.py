@@ -39,6 +39,7 @@ class bias_correction_RNN(nn.Module):
         # self.softmax(self.out(output[-1])) #F.log_softmax(self.out(output[-1]))
         output = self.lin2(self.lin1(output_n)) # final linear layers
         #print('output of bias correction RNN',output)
+        # print('self.lin2.bias:', self.lin2.bias)
         return output[-1]
 
     def initHidden(self):
@@ -102,12 +103,14 @@ class NVIL():
         input_degrees = input_degrees.permute(1, 0, 2)
         #print('input_degrees in bias correction',input_degrees)
         C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
+        # C_out = 0
         #print('C_out',C_out)
         L = p_yh.mean() - q_hgy.mean()
+        # print('L',L)
         #print('q_hgy', q_hgy)
         #print('p_yh', p_yh)
         l = p_yh - q_hgy - C_out
-        #print('l',l)
+        # print('l',l)
         return [L, l, p_yh, q_hgy, C_out]
 
     def update_cv(self, l):
@@ -125,6 +128,7 @@ class NVIL():
             else:
                 lii = l[i].data - self.c
             lii = Variable(torch.FloatTensor(lii), requires_grad=False)
+            # print('lii:', lii)
             loss_p = p_yh[i] * -1
             loss_p.backward(retain_graph=True)
             loss_q = q_hgy[i] * lii * -1

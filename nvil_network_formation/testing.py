@@ -13,7 +13,7 @@ import settings
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=100)
+    dataset = NetworkDataset(N=3000)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
     # training_samples_loader = utils_data.DataLoader(training_samples, batch_size,collate_fn=PadCollate(dim=0))
@@ -31,11 +31,12 @@ if __name__ == '__main__':
     model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
                  NetworkFormationRecognition, xdim, learning_rate=3e-4)
 
-    km_pi = [1/3, 1/3 , 1/3]
+    km_pi = list(np.ones(settings.number_of_classes)/settings.number_of_classes)
+    print(km_pi)
     model.generative_model.pi.data = torch.FloatTensor(km_pi)
   
     # fit the model
-    costs = model.fit(dataset, max_epochs=5)
+    costs = model.fit(dataset, max_epochs=1)
 
     # plot ELBO
     plt.figure()

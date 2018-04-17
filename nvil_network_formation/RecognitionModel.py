@@ -6,7 +6,7 @@ import numpy as np
 
 class recognition_RNN(nn.Module):
     def __init__(self, input_size = settings.number_of_features, hidden_size = settings.n_hidden,
-                 num_layers = settings.NUM_LAYERS, output_size = settings.OUTPUT_SIZE,nCUnits = 100):
+                 num_layers = settings.NUM_LAYERS, output_size = settings.OUTPUT_SIZE,nCUnits = 4):
         super(recognition_RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -30,6 +30,7 @@ class recognition_RNN(nn.Module):
         output_n = self.nonlinearity1(output_r[-1])  # non-linearity after the recurrent units
         output_l = self.lin2(self.lin1(output_n))  # second linear layer
         output = self.nonlinearity2(output_l)  # final non-linearity is a softmax
+        # print('self.lin2.bias:', self.lin2.bias)
         return output
 
     def initHidden(self):
@@ -76,14 +77,19 @@ class NetworkFormationRecognition(recognition_RNN):
         hidden0 = self.initHidden()
         input_degrees = Y['degrees'].unsqueeze(0)
         input_degrees = input_degrees.permute(1, 0, 2)
-        print('input_degrees',input_degrees)
+        # print('input_degrees',input_degrees)
         self.h = self.__call__(Variable(input_degrees), hidden0)
         # self.h = self.forward(input_degrees)  # this is the (classification) neural network output,
         # posterior probabilities for each class
+        # print(self.h)
         pi = np.asarray(torch.clamp(self.h, 0.001, 0.999).data)
+        # print(pi)
         pi = (1/pi.sum(axis=1))[:, np.newaxis]*pi #enforce normalization (undesirable; for numerical stability)
         x_vals = np.zeros([pi.shape[0], self.number_of_classes])
+        # print(x_vals)
         for ii in range(pi.shape[0]):
+            # print(pi[ii])
+            # print(np.random.multinomial(1, pi[ii], size=1))
             x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1)
 
         return Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
