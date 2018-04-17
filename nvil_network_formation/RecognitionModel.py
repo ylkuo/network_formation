@@ -85,16 +85,15 @@ class NetworkFormationRecognition(recognition_RNN):
         pi = np.asarray(torch.clamp(self.h, 0.001, 0.999).data)
         # print(pi)
         pi = (1/pi.sum(axis=1))[:, np.newaxis]*pi #enforce normalization (undesirable; for numerical stability)
+        return pi
+
+    def getSample(self, Y):
+        pi = self.getSampleDist(Y)
         x_vals = np.zeros([pi.shape[0], self.number_of_classes])
-        # print(x_vals)
         for ii in range(pi.shape[0]):
             # print(pi[ii])
             # print(np.random.multinomial(1, pi[ii], size=1))
             x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1)
-        return x_vals
-
-    def getSample(self, Y):
-        x_vals = self.getSampleDist(Y)
         return Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
 
     def evalLogDensity(self, hsamp, Y):
