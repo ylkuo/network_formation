@@ -138,6 +138,31 @@ class NVIL():
         self.opt.step()
         self.generative_model.update_pi()
 
+    def validate(self, dataset):
+        data_loader = NetworkIterator(dataset)
+        correct = 0
+        total = 0
+        gt_per_class = np.zeros(self.number_of_classes)
+        pred_per_class = np.zeros(self.number_of_classes)
+        dist_per_class = np.zeros((self.number_of_classes, self.number_of_classes))
+        for data_x, data_y in data_loader:
+            h_dist = self.recognition_model.getSampleDist(data_y)[0]
+            prediction = h_dist.argmax(axis=0)
+            gt = np.nonzero(data_x)[0][0]
+            gt_per_class[gt] += 1
+            pred_per_class[prediction] += 1
+            if prediction == gt:
+                correct += 1
+            total += 1
+            for i in range(len(dist_per_class[gt])):
+                dist_per_class[gt][i] += h_dist[i]
+        for i in range(self.number_of_classes):
+            for j in range(len(dist_per_class[i])):
+                dist_per_class[i][j] /= gt_per_class[i]
+        for i in range(self.number_of_classes):
+            print('Class %d - (gt, pred, avg_prob): (%f, %f, %r)' % (i, gt_per_class[i]/total, pred_per_class[i]/total, dist_per_class[i]))
+        print('Accuracy: %f' % (correct/total))
+
     def fit(self, dataset, max_epochs=100):
         avg_costs = []
         epoch = 0
@@ -158,10 +183,12 @@ class NVIL():
                 if np.mod(batch_counter, 10) == 0:
                     cx = self.c
                     vx = self.v
-                    print('(c, v, L): (%f, %f, %f)\n' % (np.asarray(cx), np.asarray(vx), L))
+                    print('(c, v, L): (%f, %f, %f)' % (np.asarray(cx), np.asarray(vx), L))
                 avg_costs.append(L.data.numpy())
                 batch_counter += 1
             epoch += 1
+            # TODO: validate with a validation set
+            self.validate(dataset)
         return avg_costs
 
 
