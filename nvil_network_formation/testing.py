@@ -13,7 +13,7 @@ import settings
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=3000)
+    dataset = NetworkDataset(N=1000)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
     # training_samples_loader = utils_data.DataLoader(training_samples, batch_size,collate_fn=PadCollate(dim=0))

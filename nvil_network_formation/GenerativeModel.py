@@ -211,15 +211,24 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         b_vals = np.asarray(b_vals)
 
-        y_vals = [dict().fromkeys(('network', 'degrees'))] * _N
+        y_vals = list(range(_N))
+
+        # print(y_vals)
 
         for ii in range(_N):
+            y_vals[ii] = dict().fromkeys(('network', 'degrees'))
             utility_params = dict().fromkeys(['theta_2'])
             utility_params['theta_2'] = x_vals[ii]
-            degrees_df, y_vals[ii]['network'] = self.generate_time_series(utility_params,suply_network_timeseries=True)
+            degrees_df, networks = self.generate_time_series(utility_params,suply_network_timeseries=True)
+            dummy1 = copy.copy(networks)
+            y_vals[ii]['network'] = copy.deepcopy(dummy1)
             # y_vals[ii]['network'] is used only to evaluate the log-densities it is not supplies as input to
             # the neural networks
-            y_vals[ii]['degrees'] = torch.FloatTensor(degrees_df.values[:, 0:self.params['feature_length']])
+            dummy2 = copy.copy(torch.FloatTensor(degrees_df.values[:, 0:self.params['feature_length']]))
+            y_vals[ii]['degrees'] = copy.copy(dummy2)
+            # print('y_vals[ii][degrees]',y_vals[ii]['degrees'])
+            # print(y_vals)
+        # print(b_vals, y_vals)
         return [b_vals, y_vals]
 
     def parameters(self):
