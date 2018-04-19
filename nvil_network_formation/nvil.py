@@ -89,24 +89,35 @@ class NVIL():
                               list(self.bias_correction.parameters()),
                               lr=learning_rate)
 
-    def get_nvil_cost(self, Y, hsamp):
-        # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
-        # Evaluate the recognition model density Q_\phi(h_i | y_i)
-        # print('hsamp fed into recognition model eval log density',hsamp)
-        # print('Y fed into recognition model eval log density', Y)
-        q_hgy = self.recognition_model.evalLogDensity(hsamp, Y)
+    def get_nvil_cost(self, Y, n):
+        q_hgys = []
+        p_yhs = []
+        C_outs = []
+        for i in range(n):
+            hsamp = self.recognition_model.getSample(Y)
+            # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
+            # Evaluate the recognition model density Q_\phi(h_i | y_i)
+            # print('hsamp fed into recognition model eval log density',hsamp)
+            # print('Y fed into recognition model eval log density', Y)
+            q_hgy = self.recognition_model.evalLogDensity(hsamp, Y)
 
-        # Evaluate the generative model density P_\theta(y_i , h_i)
-        p_yh = self.generative_model.evaluateLogDensity(hsamp, Y)
-        print('hsamp', hsamp)
-        print('Y', Y)
-        exact_posterior = self.generative_model.evaluateExactLogPosterior(Y)
-        print('exact_posterior:', exact_posterior)
-        hidden0 = self.bias_correction.initHidden()
-        input_degrees = Y['degrees'].unsqueeze(0)
-        input_degrees = input_degrees.permute(1, 0, 2)
-        #print('input_degrees in bias correction',input_degrees)
-        C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
+            # Evaluate the generative model density P_\theta(y_i , h_i)
+            p_yh = self.generative_model.evaluateLogDensity(hsamp, Y)
+            #print('hsamp', hsamp)
+            #print('Y', Y)
+            exact_posterior = self.generative_model.evaluateExactLogPosterior(Y)
+            #print('exact_posterior:', exact_posterior)
+            hidden0 = self.bias_correction.initHidden()
+            input_degrees = Y['degrees'].unsqueeze(0)
+            input_degrees = input_degrees.permute(1, 0, 2)
+            #print('input_degrees in bias correction',input_degrees)
+            C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
+            q_hgys.append(q_hgy)
+            p_yhs.append(p_yh)
+            C_outs.append(C_out)
+        p_yh = torch.stack(p_yhs)
+        q_hgy = torch.stack(q_hgys)
+        C_out = torch.stack(C_outs)
         # C_out = 0
         #print('C_out',C_out)
         L = p_yh.mean() - q_hgy.mean()
@@ -124,21 +135,26 @@ class NVIL():
         self.c = self.alpha * self.c + (1-self.alpha) * cb
         self.v = self.alpha * self.v + (1-self.alpha) * vb
 
-    def update_params(self, batch_size, l, p_yh, q_hgy, C_out):
+    def update_params(self, n, l, p_yh, q_hgy, C_out):
         self.opt.zero_grad()
-        for i in range(batch_size):
+        loss_q = q_hgy[0]
+        loss_C = C_out[0]
+        for i in range(n):
             if torch.sqrt(self.v).numpy()[0] > 1.0:
                 lii = (l[i].data - self.c) / torch.sqrt(self.v)
             else:
                 lii = l[i].data - self.c
             lii = Variable(torch.FloatTensor(lii), requires_grad=False)
-            # print('lii:', lii)
-            loss_p = p_yh[i] * -1
-            loss_p.backward(retain_graph=True)
-            loss_q = q_hgy[i] * lii * -1
-            loss_q.backward(retain_graph=True)
-            loss_C = C_out[i] * lii * -1
-            loss_C.backward(retain_graph=True)
+            if i == 0:
+                loss_q = loss_q * lii * -1
+                loss_C = loss_C * lii * -1
+            else:
+                loss_q += q_hgy[i] * lii * -1
+                loss_C += C_out[i] * lii * -1
+        loss_q = loss_q / n
+        loss_C = loss_C / n
+        loss_q.backward(retain_graph=True)
+        loss_C.backward(retain_graph=True)
         self.opt.step()
         self.generative_model.update_pi()
 
@@ -178,12 +194,13 @@ class NVIL():
             for data_x, data_y in data_loader:
                 #print('data_x', data_x)
                 #print('data_y', data_y)
-                hsamp_np = self.recognition_model.getSample(data_y)
+                #hsamp_np = self.recognition_model.getSample(data_y)
                 # print('hsamp_np',hsamp_np)
-                L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, hsamp_np)
+                n = 20
+                L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, n)
                 self.update_cv(l)
                 #print('data_y fed into update_params',data_y)
-                self.update_params(1, l, p_yh, q_hgy, C_out)# data_y.shape[0] for batch_size
+                self.update_params(n, l, p_yh, q_hgy, C_out)# data_y.shape[0] for batch_size
                 if np.mod(batch_counter, 10) == 0:
                     cx = self.c
                     vx = self.v
