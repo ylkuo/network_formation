@@ -3,6 +3,7 @@ import settings
 import torch.nn as nn
 from torch.autograd import Variable
 import numpy as np
+import math
 
 class recognition_RNN(nn.Module):
     def __init__(self, input_size = settings.number_of_features, hidden_size = settings.n_hidden,
@@ -89,19 +90,61 @@ class NetworkFormationRecognition(recognition_RNN):
 
     def getSample(self, Y):
         pi = self.getSampleDist(Y)
+        # print('pi in recognition', pi)
         x_vals = np.zeros([pi.shape[0], self.number_of_classes])
+        theta_vals = np.zeros([pi.shape[0]])
         for ii in range(pi.shape[0]):
             # print(pi[ii])
             # print(np.random.multinomial(1, pi[ii], size=1))
             x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1)
-        return Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
+            # print('x_vals[ii,:] in recognition: ' , x_vals[ii,:])
+            # b_val = x_vals[ii,:]
+            # print('b_vals:', b_vals)
+            class_label = x_vals[ii,:].nonzero()[0][0]  # the index of the chosen class
+            # print('class_label:', class_label)
+            mean_of_gaussain = settings.class_values[class_label]
+            theta_vals[ii] = np.random.normal(mean_of_gaussain, 1)
+            # print('theta_vals[ii]', theta_vals[ii])
+            if theta_vals[ii] < 0:
+                theta_vals[ii] = 0
+            # print(theta_vals)
+        # print(Variable(torch.FloatTensor(theta_vals)))
+        # print(Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0)))
+        return Variable(torch.FloatTensor(theta_vals)) #Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
 
-    def evalLogDensity(self, hsamp, Y):
+    def normal_pdf(self, value, mean=0, std=1):
+        # print(value.type(torch.FloatTensor))
+        # print('value', value.data)
+        # print('value',value)
+        # print('value_squared:',-value.sub(mean)**2)
+        gaussian_exponenet = torch.div(-value.sub(mean)**2, 2*std**2)#.type(torch.FloatTensor)
+        # print('gaussian_exponenet:', gaussian_exponenet)
+        density_evaluated = torch.div(torch.exp(gaussian_exponenet), math.sqrt(2 * math.pi) * std)
+        # print('z', z)
+        # z = value/math.sqrt(2)
+        # print('z',z)
+        return density_evaluated  # 0.5 * (1 + torch.erf(z.type(torch.FloatTensor)))
+        #0.5 * (1 + torch.erf(torch.FloatTensor([value /math.sqrt(2)])))
 
+    def evalLogDensity(self, theta_samp, Y):
         ''' We assume each sample is a single multinomial sample from the latent h, so each sample is an integer class.'''
         hidden0 = self.initHidden()
         input_degrees = Y['degrees'].unsqueeze(0)
         input_degrees = input_degrees.permute(1, 0, 2)
         self.h = self.__call__(Variable(input_degrees), hidden0)
-        return torch.log(torch.sum(self.h*hsamp, 1))
 
+        gaussian_probabilities = []
+        for i in range(settings.number_of_classes):
+            # print(self.h.data[i])
+            gaussian_probabilities += [self.normal_pdf(theta_samp, mean=settings.class_values[i], std=1)]
+            # print('gaussian_probabilities:', gaussian_probabilities)
+
+
+        gaussian_probabilities = torch.squeeze(torch.stack(gaussian_probabilities))
+        # print('self.h:', self.h)
+        # print('gaussian_probabilities:',gaussian_probabilities)
+        total_probability = torch.squeeze(torch.dot(gaussian_probabilities,self.h))
+        # print('total_probability:',total_probability)
+        # print(torch.log(total_probability))
+        # print(torch.log(torch.sum(self.h*theta_samp, 1)))
+        return torch.log(total_probability)  # torch.log(torch.sum(self.h*theta_samp, 1))

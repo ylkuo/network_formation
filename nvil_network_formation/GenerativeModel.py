@@ -213,13 +213,21 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         y_vals = list(range(_N))
 
-        # print(y_vals)
+        theta_vals = list(range(_N))
+
+        # print('x_vals before:',x_vals)
 
         for ii in range(_N):
             y_vals[ii] = dict().fromkeys(('network', 'degrees'))
             utility_params = dict().fromkeys(['theta_2'])
-            utility_params['theta_2'] = settings.class_values[x_vals[ii]]
-            degrees_df, networks = self.generate_time_series(utility_params,suply_network_timeseries=True)
+            # print(settings.class_values[x_vals[ii]])
+            mean_of_gaussain = settings.class_values[x_vals[ii]]
+            theta_vals[ii] = np.random.normal(mean_of_gaussain, 1)
+            # print('theta_vals[ii]',theta_vals[ii])
+            if theta_vals[ii] < 0:
+                theta_vals[ii] = 0
+            utility_params['theta_2'] = theta_vals[ii]
+            degrees_df, networks = self.generate_time_series(utility_params, suply_network_timeseries=True)
             dummy1 = copy.copy(networks)
             y_vals[ii]['network'] = copy.deepcopy(dummy1)
             # y_vals[ii]['network'] is used only to evaluate the log-densities it is not supplies as input to
@@ -228,8 +236,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
             y_vals[ii]['degrees'] = copy.copy(dummy2)
             # print('y_vals[ii][degrees]',y_vals[ii]['degrees'])
             # print(y_vals)
-        # print(b_vals, y_vals)
-        return [b_vals, y_vals]
+        # print('b_vals:', b_vals)
+        # print('x_vals after:', x_vals)
+        # print('y_vals:', y_vals)
+        return [theta_vals, y_vals]
 
     def parameters(self):
         params_list = [self.pi_un]
@@ -330,13 +340,16 @@ class NetworkFormationGenerativeModel(UtilityModel):
                                       product_term * (1 - self.normal_cdf(epsilon_upperbound))
         return probability_of_the_edge
 
-    def evaluateLogDensity(self, h, Y):
+    def evaluateLogDensity(self, theta_val, Y):
+        # print('theta_val',theta_val)
+
         # print('Y',Y)
-        # print('h',h)
-        X = torch.t(h.nonzero())[1]
+        # print('theta_val',theta_val)
+        # X = torch.t(h.nonzero())[1]
         # print('X',X)
         #log_density = []
         #for count in range(1): #range(Y.shape[0]):
+        X = theta_val
         network_time_series = Y['network'] #[count]['network']
         last_network = network_time_series[-1]
         unformed_edges = NX.non_edges(last_network)
@@ -356,8 +369,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('X',X)
         # print('pi', self.pi)
         # print('self.pi[X]', self.pi[X])
-        log_density = (LogDensityVeci + torch.log(self.pi[X]))#/total_edges # /total_edges X[count]
+        log_density = (LogDensityVeci + torch.log(Variable(torch.FloatTensor([1/4])))) #  #/total_edges # /total_edges X[count]
 
+        # print('log_density',log_density)
+        assert not math.isnan(log_density),"log_density is nan!!!"
         return log_density #torch.squeeze(torch.stack(log_density))
 
     def evaluateExactLogPosterior(self, Y):

@@ -94,23 +94,22 @@ class NVIL():
         p_yhs = []
         C_outs = []
         for i in range(n):
-            hsamp = self.recognition_model.getSample(Y)
+            theta_samp = self.recognition_model.getSample(Y)
             # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
             # Evaluate the recognition model density Q_\phi(h_i | y_i)
             # print('hsamp fed into recognition model eval log density',hsamp)
             # print('Y fed into recognition model eval log density', Y)
-            q_hgy = self.recognition_model.evalLogDensity(hsamp, Y)
-
+            q_hgy = self.recognition_model.evalLogDensity(theta_samp, Y)
             # Evaluate the generative model density P_\theta(y_i , h_i)
-            p_yh = self.generative_model.evaluateLogDensity(hsamp, Y)
-            #print('hsamp', hsamp)
-            #print('Y', Y)
-            exact_posterior = self.generative_model.evaluateExactLogPosterior(Y)
-            #print('exact_posterior:', exact_posterior)
+            p_yh = self.generative_model.evaluateLogDensity(theta_samp, Y)
+            # print('p_yh', p_yh)
+            # print('Y', Y)
+            # exact_posterior = self.generative_model.evaluateExactLogPosterior(Y)
+            # print('exact_posterior:', exact_posterior)
             hidden0 = self.bias_correction.initHidden()
             input_degrees = Y['degrees'].unsqueeze(0)
             input_degrees = input_degrees.permute(1, 0, 2)
-            #print('input_degrees in bias correction',input_degrees)
+            # print('input_degrees in bias correction',input_degrees)
             C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
             q_hgys.append(q_hgy)
             p_yhs.append(p_yh)
@@ -119,40 +118,64 @@ class NVIL():
         q_hgy = torch.stack(q_hgys)
         C_out = torch.stack(C_outs)
         # C_out = 0
-        #print('C_out',C_out)
+        # print('C_out',C_out)
         L = p_yh.mean() - q_hgy.mean()
         # print('L',L)
-        #print('q_hgy', q_hgy)
-        #print('p_yh', p_yh)
+        # print('q_hgy', q_hgy)
+        # print('p_yh', p_yh)
         l = p_yh - q_hgy - C_out
+        # print('p_yh',p_yh)
+        # print('q_hgy',q_hgy)
+        # print('C_out',C_out)
+        # print('L', L)
         # print('l',l)
         return [L, l, p_yh, q_hgy, C_out]
 
     def update_cv(self, l):
         # Now compute derived quantities for the update
+        # print(l)
         cb = l.mean().data
         vb = l.var().data
+        # print('self.c', self.c)
+        # print('self.v', self.v)
         self.c = self.alpha * self.c + (1-self.alpha) * cb
         self.v = self.alpha * self.v + (1-self.alpha) * vb
+        # print('self.c after', self.c)
+        # print('self.v after', self.v)
 
     def update_params(self, n, l, p_yh, q_hgy, C_out):
         self.opt.zero_grad()
+        # print('l',l)
+        # print('q_hgy:',q_hgy)
         loss_q = q_hgy[0]
+        # print('loss_q:',loss_q)
         loss_C = C_out[0]
         for i in range(n):
             if torch.sqrt(self.v).numpy()[0] > 1.0:
                 lii = (l[i].data - self.c) / torch.sqrt(self.v)
+                # print('l[i].data000', l[i].data)
+                # print('self.c000', self.c)
+                # print('torch.sqrt(self.v)000',torch.sqrt(self.v))
+                # print('lii000', lii)
             else:
                 lii = l[i].data - self.c
+                # print('l[i].data111',l[i].data)
+                # print('self.c111',self.c)
+                # print('lii111:', lii)
             lii = Variable(torch.FloatTensor(lii), requires_grad=False)
+
             if i == 0:
                 loss_q = loss_q * lii * -1
+                # print('loss_q1:',loss_q)
+                # print('lii2',lii)
                 loss_C = loss_C * lii * -1
             else:
                 loss_q += q_hgy[i] * lii * -1
+                # print('loss_q2:',loss_q)
                 loss_C += C_out[i] * lii * -1
         loss_q = loss_q / n
         loss_C = loss_C / n
+        # print('loss_q3:',loss_q)
         loss_q.backward(retain_graph=True)
         loss_C.backward(retain_graph=True)
         self.opt.step()
