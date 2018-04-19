@@ -35,4 +35,4 @@ number_of_features = 10 # the (global) average clustering or transitivity
 number_of_classes = OUTPUT_SIZE
 
 
-class_values = list(range(number_of_classes))
+class_values = [0, 1, 2] #list(range(number_of_classes))

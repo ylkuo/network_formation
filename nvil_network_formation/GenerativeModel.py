@@ -159,7 +159,7 @@ class UtilityModel(NetworkModel):
             #     [self.params['lower_limit'], self.params['upper_limit']])  # np.random.normal(0, 1)#
 
         if 'theta_3' not in utility_params:
-            self.params['theta_3'] = 1  # np.random.normal(0, 1)
+            self.params['theta_3'] = 5  # np.random.normal(0, 1)
         if 'sparsity' not in utility_params:
             self.params['sparsity'] = 500 * np.sqrt(8 / self.params['size'])
         # there should be better ways to set the parameters theta_0 and theta_3 (determining the sparsity) based on the
@@ -218,7 +218,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         for ii in range(_N):
             y_vals[ii] = dict().fromkeys(('network', 'degrees'))
             utility_params = dict().fromkeys(['theta_2'])
-            utility_params['theta_2'] = x_vals[ii]
+            utility_params['theta_2'] = settings.class_values[x_vals[ii]]
             degrees_df, networks = self.generate_time_series(utility_params,suply_network_timeseries=True)
             dummy1 = copy.copy(networks)
             y_vals[ii]['network'] = copy.deepcopy(dummy1)
@@ -244,7 +244,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print(value.type(torch.FloatTensor))
         # print('value', value.data)
         # print('value',value)
-        z = torch.div(value,math.sqrt(2))#.type(torch.FloatTensor)
+        z = torch.div(value, math.sqrt(2))#.type(torch.FloatTensor)
         # print('z', z)
         # z = value/math.sqrt(2)
         # print('z',z)
@@ -255,7 +255,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         utility_params = dict.fromkeys(['theta_0','theta_1','theta_2','theta_3','sparsity'])
         utility_params['theta_0'] = 0
         utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 1
+        utility_params['theta_3'] = 5
         utility_params['sparsity'] = 500 * np.sqrt(8 / 20)
         self.set_utility_params(utility_params)
 
@@ -272,13 +272,13 @@ class NetworkFormationGenerativeModel(UtilityModel):
                              (1 / self.params['sparsity']) * distance
 
         # print(epsilon_upperbound)
-        return self.normal_cdf(epsilon_upperbound)#.type(torch.FloatTensor)
+        return self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))#.type(torch.FloatTensor)
 
     def edge_probability(self, edge, network_time_series, lastnetwork, theta_2):
         utility_params = dict.fromkeys(['theta_0', 'theta_1', 'theta_2', 'theta_3', 'sparsity'])
         utility_params['theta_0'] = 0
         utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 1
+        utility_params['theta_3'] = 5
         utility_params['sparsity'] = 500 * np.sqrt(8 / 20)
         self.set_utility_params(utility_params)
 
@@ -325,7 +325,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
             # print('epsilon_lowerbound', epsilon_lowerbound)  # it has too many [[[[[]]]]]
             # print('epsilon_upperbound', epsilon_upperbound)   # needed to be wrapped inside a variable
-            probability_of_the_edge = (self.normal_cdf(epsilon_upperbound) - self.normal_cdf(epsilon_lowerbound)) + \
+            epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
+            probability_of_the_edge = (self.normal_cdf(epsilon_upperbound) -  self.normal_cdf(epsilon_lowerbound)) + \
                                       product_term * (1 - self.normal_cdf(epsilon_upperbound))
         return probability_of_the_edge
 
@@ -366,7 +367,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         for i in range(settings.number_of_classes):
             # print('Y',Y)
             # print('h',h)
-            X = Variable(torch.LongTensor([settings.class_values[i]]))
+            X = Variable(torch.FloatTensor([settings.class_values[i]]))
             # print('X', X)
             # log_density = []
             # for count in range(1): #range(Y.shape[0]):
@@ -390,7 +391,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # print('X',X)
             # print('self.pi', self.pi)
             # print('self.pi[X]', self.pi[0])
-            numerators += [torch.exp(LogDensityVeci + torch.log(self.pi[X]))]  # /total_edges # /total_edges X[count]
-            denominator += torch.exp(LogDensityVeci + torch.log(self.pi[X]))
+            numerators += [torch.exp(LogDensityVeci + torch.log(self.pi[i]))]  # /total_edges # /total_edges X[count]
+            denominator += torch.exp(LogDensityVeci + torch.log(self.pi[i]))
         log_densities = torch.squeeze(torch.log(torch.div(torch.stack(numerators), denominator)))
         return log_densities  # torch.squeeze(torch.stack(log_density))
