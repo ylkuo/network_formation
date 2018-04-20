@@ -21,7 +21,7 @@ class NetworkDataset(object):
 class NetworkIterator(object):
     def __init__(self, dataset, batch_size=1):
         self.dataset = dataset
-        self.batch = batch_size
+        self.batch_size = batch_size
         self.current = 0
 
     def __iter__(self):
@@ -32,8 +32,9 @@ class NetworkIterator(object):
             raise StopIteration
         else:
             index = self.current
-            self.current += 1
-            return (self.dataset.xsamp[index], self.dataset.ysamp[index])
+            self.current += self.batch_size
+            return (self.dataset.xsamp[index:index+self.batch_size],
+                    self.dataset.ysamp[index:index+self.batch_size])
 
 
 

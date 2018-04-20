@@ -90,30 +90,32 @@ class NVIL():
                               lr=learning_rate)
 
     def get_nvil_cost(self, Y, n):
+        batch_size = len(Y)
         q_hgys = []
         p_yhs = []
         C_outs = []
-        for i in range(n):
-            theta_samp = self.recognition_model.getSample(Y)
-            # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
-            # Evaluate the recognition model density Q_\phi(h_i | y_i)
-            # print('hsamp fed into recognition model eval log density',hsamp)
-            # print('Y fed into recognition model eval log density', Y)
-            q_hgy = self.recognition_model.evalLogDensity(theta_samp, Y)
-            # Evaluate the generative model density P_\theta(y_i , h_i)
-            p_yh = self.generative_model.evaluateLogDensity(theta_samp, Y)
-            # print('p_yh', p_yh)
-            # print('Y', Y)
-            # exact_posterior = self.generative_model.evaluateExactLogPosterior(Y)
-            # print('exact_posterior:', exact_posterior)
-            hidden0 = self.bias_correction.initHidden()
-            input_degrees = Y['degrees'].unsqueeze(0)
-            input_degrees = input_degrees.permute(1, 0, 2)
-            # print('input_degrees in bias correction',input_degrees)
-            C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
-            q_hgys.append(q_hgy)
-            p_yhs.append(p_yh)
-            C_outs.append(C_out)
+        for i in range(batch_size):
+            for j in range(n):
+                theta_samp = self.recognition_model.getSample(Y[i])
+                # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
+                # Evaluate the recognition model density Q_\phi(h_i | y_i)
+                # print('hsamp fed into recognition model eval log density',hsamp)
+                # print('Y fed into recognition model eval log density', Y)
+                q_hgy = self.recognition_model.evalLogDensity(theta_samp, Y[i])
+                # Evaluate the generative model density P_\theta(y_i , h_i)
+                p_yh = self.generative_model.evaluateLogDensity(theta_samp, Y[i])
+                # print('p_yh', p_yh)
+                # print('Y', Y)
+                # exact_posterior = self.generative_model.evaluateExactLogPosterior(Y)
+                # print('exact_posterior:', exact_posterior)
+                hidden0 = self.bias_correction.initHidden()
+                input_degrees = Y[i]['degrees'].unsqueeze(0)
+                input_degrees = input_degrees.permute(1, 0, 2)
+                # print('input_degrees in bias correction',input_degrees)
+                C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
+                q_hgys.append(q_hgy)
+                p_yhs.append(p_yh)
+                C_outs.append(C_out)
         p_yh = torch.stack(p_yhs)
         q_hgy = torch.stack(q_hgys)
         C_out = torch.stack(C_outs)
@@ -206,11 +208,11 @@ class NVIL():
             print('Class %d - (gt, pred, avg_prob): (%f, %f, %r)' % (i, gt_per_class[i]/total, pred_per_class[i]/total, dist_per_class[i]))
         print('Accuracy: %f' % (correct/total))
 
-    def fit(self, dataset, max_epochs=100):
+    def fit(self, dataset, batch_size=1, n=10, max_epochs=100):
         avg_costs = []
         epoch = 0
         while epoch < max_epochs:
-            data_loader = NetworkIterator(dataset)
+            data_loader = NetworkIterator(dataset, batch_size=batch_size)
             sys.stdout.write("\r%0.2f%%\n" % (epoch * 100./ max_epochs))
             sys.stdout.flush()
             batch_counter = 0
@@ -219,7 +221,6 @@ class NVIL():
                 #print('data_y', data_y)
                 #hsamp_np = self.recognition_model.getSample(data_y)
                 # print('hsamp_np',hsamp_np)
-                n = 20
                 L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, n)
                 self.update_cv(l)
                 #print('data_y fed into update_params',data_y)
@@ -232,7 +233,7 @@ class NVIL():
                 batch_counter += 1
             epoch += 1
             # TODO: validate with a validation set
-            self.validate(dataset)
+            #self.validate(dataset)
         return avg_costs
 
 

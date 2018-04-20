@@ -29,14 +29,14 @@ if __name__ == '__main__':
     xdim = dataset.get_dim()
     gen_params = dict([])
     model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
-                 NetworkFormationRecognition, xdim, learning_rate=3e-4)
+                 NetworkFormationRecognition, xdim, learning_rate=3e-3)
 
     km_pi = list(np.ones(settings.number_of_classes)/settings.number_of_classes)
     print(km_pi)
     model.generative_model.pi.data = torch.FloatTensor(km_pi)
   
     # fit the model
-    costs = model.fit(dataset, max_epochs=1)
+    costs = model.fit(dataset, batch_size=5, max_epochs=1)
 
     # plot ELBO
     plt.figure()
