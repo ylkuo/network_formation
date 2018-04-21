@@ -204,6 +204,16 @@ class NetworkFormationGenerativeModel(UtilityModel):
         self.prior = self.prior_un#/(settings.support)
         # print('self.pi in init NetFormationGenModel',self.pi)
 
+    def get_y(self, theta):
+        utility_params = dict().fromkeys(['theta_2'])
+        utility_params['theta_2'] = theta
+        degrees_df, networks = self.generate_time_series(utility_params, suply_network_timeseries=True)
+        dummy1 = copy.copy(networks)
+        #y_vals[ii]['network'] = copy.deepcopy(dummy1)
+        dummy2 = copy.copy(torch.FloatTensor(degrees_df.values[:, 0:self.params['feature_length']]))
+        #y_vals[ii]['degrees'] = copy.copy(dummy2)
+        return copy.deepcopy(dummy1), copy.copy(dummy2)
+
     def sampleXY(self, _N):
         _prior = np.asarray(torch.clamp(self.prior, 0.001, 0.999).data)
         # b_vals = np.random.multinomial(1, _prior, size=_N) # a binary vector of all zero entry except one (the chosen class)
@@ -219,23 +229,11 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         for ii in range(_N):
             y_vals[ii] = dict().fromkeys(('network', 'degrees'))
-            utility_params = dict().fromkeys(['theta_2'])
-            # print(settings.class_values[x_vals[ii]])
-            # mean_of_gaussain = settings.class_values[x_vals[ii]]
             theta_vals[ii] = np.random.choice(_prior)#np.random.normal(mean_of_gaussain, 1)
             # print('theta_vals[ii]',theta_vals[ii])
             if theta_vals[ii] < 0:
                 theta_vals[ii] = 0
-            utility_params['theta_2'] = theta_vals[ii]
-            degrees_df, networks = self.generate_time_series(utility_params, suply_network_timeseries=True)
-            dummy1 = copy.copy(networks)
-            y_vals[ii]['network'] = copy.deepcopy(dummy1)
-            # y_vals[ii]['network'] is used only to evaluate the log-densities it is not supplies as input to
-            # the neural networks
-            dummy2 = copy.copy(torch.FloatTensor(degrees_df.values[:, 0:self.params['feature_length']]))
-            y_vals[ii]['degrees'] = copy.copy(dummy2)
-            # print('y_vals[ii][degrees]',y_vals[ii]['degrees'])
-            # print(y_vals)
+            y_vals[ii]['network'], y_vals[ii]['degrees'] = self.get_y(theta_vals[ii])
         # print('b_vals:', b_vals)
         # print('x_vals after:', x_vals)
         # print('y_vals:', y_vals)

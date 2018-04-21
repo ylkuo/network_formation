@@ -11,6 +11,31 @@ import torch.optim as optim
 from torch.autograd import Variable
 from dataset import NetworkIterator
 
+# estimator_type can be 'posterior_mean', 'MAP'
+def eval_posterior(theta, rec_model, gen_model, n_samples=5, n_thetas=10,
+                   estimator_type='MAP', bin_size=10):
+    selected_thetas = np.zeros(n_samples)
+    for i in range(n_samples):
+        y_val = dict().fromkeys(('network', 'degrees'))
+        y_val['network'], y_val['degrees'] = gen_model.get_y(theta)
+        sampled_thetas = np.zeros(n_thetas)
+        for j in range(n_thetas):
+            sampled_theta = rec_model.getSample(y_val)
+            sampled_thetas[j] = sampled_theta.data[0]
+        if estimator_type == 'posterior_mean':
+            selected_thetas[i] = sampled_thetas.mean()
+        elif estimator_type == 'MAP':
+            hist, bin_edges = np.histogram(sampled_thetas, bins=bin_size)
+            j = np.argmax(hist)
+            selected_thetas[i] = (bin_edges[j] + bin_edges[j+1]) / 2.
+    error = 0
+    if estimator_type == 'posterior_mean':
+        error = np.sum((selected_theta - theta)**2 for selected_theta in selected_thetas)
+    elif estimator_type == 'MAP':
+        error = np.sum(abs(selected_theta - theta) for selected_theta in selected_thetas)
+    error /= n_samples
+    return error, selected_thetas
+
 
 class bias_correction_RNN(nn.Module):
     def __init__(self, input_size=settings.number_of_features, hidden_size=settings.n_hidden,
@@ -183,31 +208,6 @@ class NVIL():
         self.opt.step()
         # self.generative_model.update_pi()
 
-    def validate(self, dataset):
-        data_loader = NetworkIterator(dataset)
-        correct = 0
-        total = 0
-        gt_per_class = np.zeros(self.number_of_classes)
-        pred_per_class = np.zeros(self.number_of_classes)
-        dist_per_class = np.zeros((self.number_of_classes, self.number_of_classes))
-        for data_x, data_y in data_loader:
-            h_dist = self.recognition_model.getSampleDist(data_y)[0]
-            prediction = h_dist.argmax(axis=0)
-            gt = np.nonzero(data_x)[0][0]
-            gt_per_class[gt] += 1
-            pred_per_class[prediction] += 1
-            if prediction == gt:
-                correct += 1
-            total += 1
-            for i in range(len(dist_per_class[gt])):
-                dist_per_class[gt][i] += h_dist[i]
-        for i in range(self.number_of_classes):
-            for j in range(len(dist_per_class[i])):
-                dist_per_class[i][j] /= gt_per_class[i]
-        for i in range(self.number_of_classes):
-            print('Class %d - (gt, pred, avg_prob): (%f, %f, %r)' % (i, gt_per_class[i]/total, pred_per_class[i]/total, dist_per_class[i]))
-        print('Accuracy: %f' % (correct/total))
-
     def fit(self, dataset, batch_size=1, n=10, max_epochs=100):
         avg_costs = []
         epoch = 0
@@ -232,8 +232,6 @@ class NVIL():
                 avg_costs.append(L.data.numpy())
                 batch_counter += 1
             epoch += 1
-            # TODO: validate with a validation set
-            #self.validate(dataset)
         return avg_costs
 
 

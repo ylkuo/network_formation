@@ -13,7 +13,7 @@ import settings
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=2000)
+    dataset = NetworkDataset(N=1000)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
     # training_samples_loader = utils_data.DataLoader(training_samples, batch_size,collate_fn=PadCollate(dim=0))
@@ -37,6 +37,14 @@ if __name__ == '__main__':
   
     # fit the model
     costs = model.fit(dataset, batch_size=20, max_epochs=1)
+
+    # eval posterior estimators
+    # TODO: plot theta vs estimate thetas figure
+    for theta in [1,2,3,4]:
+        error, thetas = eval_posterior(theta, model.recognition_model, model.generative_model,
+                                       n_samples=5, n_thetas=20,
+                                       estimator_type='MAP')
+        print('theta, estimate_thetas, error: %f, %r, %f' % (theta, thetas, error))
 
     # plot ELBO
     plt.figure()
