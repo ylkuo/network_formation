@@ -181,7 +181,7 @@ class NVIL():
         loss_q.backward(retain_graph=True)
         loss_C.backward(retain_graph=True)
         self.opt.step()
-        self.generative_model.update_pi()
+        # self.generative_model.update_pi()
 
     def validate(self, dataset):
         data_loader = NetworkIterator(dataset)

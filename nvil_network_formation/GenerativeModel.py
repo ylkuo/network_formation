@@ -194,23 +194,23 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         # Mixture distribution
         # print('GenerativeParams', GenerativeParams)
-        if 'pi' in GenerativeParams:
+        if 'prior' in GenerativeParams:
 
-            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['pi'])), requires_grad=True)
+            self.prior_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['prior'])), requires_grad=True)
         else:
-            self.pi_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(settings.number_of_classes))), requires_grad=True)
+            # self.prior_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(settings.number_of_classes))), requires_grad=True)
+            self.prior_un = nn.Parameter(torch.FloatTensor(np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)), requires_grad=True)
             # what is the 100*??? should n't it be np.ones(xDim)
-        self.pi = self.pi_un / self.pi_un.sum()
+        self.prior = self.prior_un#/(settings.support)
         # print('self.pi in init NetFormationGenModel',self.pi)
 
     def sampleXY(self, _N):
-        _pi = np.asarray(torch.clamp(self.pi, 0.001, 0.999).data)
-
-        b_vals = np.random.multinomial(1, _pi, size=_N) # a binary vector of all zero entry except one (the chosen class)
-        x_vals = b_vals.nonzero()[1] # the index of the chosen class
-
-        b_vals = np.asarray(b_vals)
-
+        _prior = np.asarray(torch.clamp(self.prior, 0.001, 0.999).data)
+        # b_vals = np.random.multinomial(1, _prior, size=_N) # a binary vector of all zero entry except one (the chosen class)
+        # x_vals = b_vals.nonzero()[1] # the index of the chosen class
+        #
+        # b_vals = np.asarray(b_vals)
+        #
         y_vals = list(range(_N))
 
         theta_vals = list(range(_N))
@@ -221,8 +221,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
             y_vals[ii] = dict().fromkeys(('network', 'degrees'))
             utility_params = dict().fromkeys(['theta_2'])
             # print(settings.class_values[x_vals[ii]])
-            mean_of_gaussain = settings.class_values[x_vals[ii]]
-            theta_vals[ii] = np.random.normal(mean_of_gaussain, 1)
+            # mean_of_gaussain = settings.class_values[x_vals[ii]]
+            theta_vals[ii] = np.random.choice(_prior)#np.random.normal(mean_of_gaussain, 1)
             # print('theta_vals[ii]',theta_vals[ii])
             if theta_vals[ii] < 0:
                 theta_vals[ii] = 0
@@ -242,13 +242,13 @@ class NetworkFormationGenerativeModel(UtilityModel):
         return [theta_vals, y_vals]
 
     def parameters(self):
-        params_list = [self.pi_un]
+        params_list = [self.prior_un]
         for params in params_list:
             yield params
 
     def update_pi(self):
         #print('self.pi in update_pi',self.pi)
-        self.pi = self.pi_un / self.pi_un.sum()
+        self.prior = self.prior #self.prior_un / self.prior_un.sum()
 
     def normal_cdf(self, value):
         # print(value.type(torch.FloatTensor))
@@ -369,13 +369,17 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('X',X)
         # print('pi', self.pi)
         # print('self.pi[X]', self.pi[X])
-        log_density = (LogDensityVeci + torch.log(Variable(torch.FloatTensor([1/4])))) #  #/total_edges # /total_edges X[count]
+        log_density = (LogDensityVeci + torch.log(Variable(torch.FloatTensor([1/settings.support])))) #  #/total_edges # /total_edges X[count]
 
         # print('log_density',log_density)
+        if math.isnan(log_density):
+            print('theta_val:', theta_val)
         assert not math.isnan(log_density),"log_density is nan!!!"
         return log_density #torch.squeeze(torch.stack(log_density))
 
     def evaluateExactLogPosterior(self, Y):
+        '''Use MCMC to get samples from the exact posterior. '''
+
 
         numerators = []
         denominator = 0
