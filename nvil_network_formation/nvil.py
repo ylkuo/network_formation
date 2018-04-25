@@ -12,16 +12,24 @@ from torch.autograd import Variable
 from dataset import NetworkIterator
 
 # estimator_type can be 'posterior_mean', 'MAP'
+# which_posterior can be 'exact', 'variational'
 def eval_posterior(theta, rec_model, gen_model, n_samples=5, n_thetas=10,
-                   estimator_type='MAP', bin_size=10):
+                   estimator_type='MAP', bin_size=10, which_posterior='variational'):
     selected_thetas = np.zeros(n_samples)
     for i in range(n_samples):
         y_val = dict().fromkeys(('network', 'degrees'))
         y_val['network'], y_val['degrees'] = gen_model.get_y(theta)
         sampled_thetas = np.zeros(n_thetas)
-        for j in range(n_thetas):
-            sampled_theta = rec_model.getSample(y_val)
-            sampled_thetas[j] = sampled_theta.data[0]
+
+        if which_posterior == 'variational':
+            for j in range(n_thetas):
+                sampled_theta = rec_model.getSample(y_val)
+                sampled_thetas[j] = sampled_theta.data[0]
+        elif which_posterior == 'exact':
+            sampled_thetas = gen_model.get_exact_posterior_samples(y_val,n_thetas)
+        else:
+            assert False, "psoterior type is invalid."
+        print('sampled_thetas:',sampled_thetas)
         if estimator_type == 'posterior_mean':
             selected_thetas[i] = sampled_thetas.mean()
         elif estimator_type == 'MAP':
@@ -233,70 +241,3 @@ class NVIL():
                 batch_counter += 1
             epoch += 1
         return avg_costs
-
-
- # def doTraining(self, dataset, n_iters  = SENTINEL , batch_size=4, window_length_loss=64 , verbose = False ,
-    #                save = False , file_name = 'model.pkl'):
-    #
-    #     if n_iters is SENTINEL:
-    #         n_iters = len(dataset)
-    #
-    #     features = []
-    #     labels = []
-    #     for iter in dataset:
-    #         labels.append(iter[0])
-    #         features.append(iter[1])
-    #
-    #     training_samples = Simulations_Dataset(n_iters, features, labels)
-    #     training_samples_loader = utils_data.DataLoader(training_samples, batch_size,collate_fn=PadCollate(dim=0))#
-    #
-    #
-    #     criterion = nn.NLLLoss()
-    #     optimizer = torch.optim.Adam(self.parameters(), lr=0.002, weight_decay=0)
-    #
-    #     moving_avg_losses = []
-    #     current_agg_loss = 0
-    #
-    #     count_iterations = 0
-    #     start = time.time()
-    #     total_number_of_rounds = n_iters // batch_size
-    #
-    #     for i, samples in enumerate(training_samples_loader):
-    #         if i == total_number_of_rounds:
-    #             break
-    #         # Get each batch
-    #         sampled_features, sampled_labels = samples  # features[i], labels[i] #samples
-    #         # Convert tensors into Variables
-    #         sampled_features, sampled_labels = Variable(sampled_features.permute(1, 0, 2)), Variable(sampled_labels)
-    #
-    #         hidden = self.initHidden()
-    #         output_type = self.__call__(sampled_features, hidden)
-    #
-    #         optimizer.zero_grad()
-    #         #print(output_type)
-    #         #print('next')
-    #         #print(sampled_labels)
-    #         loss_type = criterion(output_type, sampled_labels.view(batch_size))
-    #
-    #         loss_type.backward()
-    #
-    #         optimizer.step()
-    #
-    #         loss = loss_type.data[0]
-    #         count_iterations += 1
-    #         current_agg_loss += loss
-    #
-    #         if count_iterations % window_length_loss == 0:
-    #             current_avg_loss = current_agg_loss / window_length_loss
-    #             moving_avg_losses.append(current_avg_loss)
-    #             if verbose:
-    #                 print('%d %d%% (%s) %.4f (avg %.4f) ' %
-    #                     (count_iterations, float(count_iterations) / total_number_of_rounds * 100, timeSince(start), loss,
-    #                      current_avg_loss))
-    #
-    #             current_agg_loss = 0
-    #     self.training_losses = self.training_losses + moving_avg_losses
-    #     if save:
-    #         model_fine_tuned = copy.deepcopy(self)
-    #         pickle.dump(model_fine_tuned, open( './data/'+ file_name, 'wb'))
-    #     return moving_avg_losses

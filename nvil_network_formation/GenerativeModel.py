@@ -8,6 +8,7 @@ import networkx as NX
 import torch.nn as nn
 from torch.autograd import Variable
 import settings
+import pymc as mc
 
 RD.seed()
 np.random.seed()
@@ -375,40 +376,87 @@ class NetworkFormationGenerativeModel(UtilityModel):
         assert not math.isnan(log_density),"log_density is nan!!!"
         return log_density #torch.squeeze(torch.stack(log_density))
 
-    def evaluateExactLogPosterior(self, Y):
+    def get_exact_posterior_samples(self, Y,n_samples=100):
         '''Use MCMC to get samples from the exact posterior. '''
 
+        infer_theta = mc.Uniform('infer_theta', settings.class_values[0],
+                                   settings.class_values[-1])  # this is the prior on the quality
 
-        numerators = []
-        denominator = 0
-        for i in range(settings.number_of_classes):
-            # print('Y',Y)
-            # print('h',h)
-            X = Variable(torch.FloatTensor([settings.class_values[i]]))
-            # print('X', X)
-            # log_density = []
-            # for count in range(1): #range(Y.shape[0]):
-            network_time_series = Y['network']  # [count]['network']
+        data = Y['network']
+
+        @mc.stochastic(observed=True)
+        def network_likelihood_model(value=data, infer_theta=infer_theta):
+            # print('infer_theta:', infer_theta.tolist())
+            X = Variable(torch.FloatTensor([infer_theta.tolist()]))
+            # print('data:', data)
+            # print('value:',value)
+            network_time_series = data
             last_network = network_time_series[-1]
             unformed_edges = NX.non_edges(last_network)
             formed_edges = NX.edges(last_network)
             LogDensityVeci = 0
             total_edges = 0
-
             for non_edge in unformed_edges:
                 LogDensityVeci += torch.log(self.non_edge_probability(non_edge, last_network, X))  # X[count]
                 total_edges += 1
-
             for edge in formed_edges:
                 LogDensityVeci += torch.log(
                     self.edge_probability(edge, network_time_series, last_network, X))  # X[count]
                 total_edges += 1
-
             # print('pi',self.pi)
             # print('X',X)
             # print('self.pi', self.pi)
             # print('self.pi[X]', self.pi[0])
-            numerators += [torch.exp(LogDensityVeci + torch.log(self.pi[i]))]  # /total_edges # /total_edges X[count]
-            denominator += torch.exp(LogDensityVeci + torch.log(self.pi[i]))
-        log_densities = torch.squeeze(torch.log(torch.div(torch.stack(numerators), denominator)))
-        return log_densities  # torch.squeeze(torch.stack(log_density))
+            log_likelihood = LogDensityVeci + torch.log(Variable(torch.FloatTensor([1/settings.support])))
+            # log_densities = torch.squeeze(torch.log(torch.div(torch.stack(numerators), denominator)))
+            # print('log_likelihood',log_likelihood)
+            return log_likelihood.data.numpy()
+
+        # posterior_samples = np.zeros(n_samples)
+        # for i in range(n_samples):
+        model = mc.MCMC([infer_theta, network_likelihood_model])
+        model.sample(iter=1000, progress_bar=False)
+        posterior_samples = model.trace('infer_theta')[-n_samples:]
+        # print('posterior_samples inside MCMC',posterior_samples)
+        # posterior_mean = np.mean(model.trace('infer_theta')[:])
+        return posterior_samples  # torch.squeeze(torch.stack(log_density))
+
+
+
+    # def evaluateExactLogPosterior(self, Y):
+    #     '''Use MCMC to get samples from the exact posterior. '''
+    #
+    #
+    #     numerators = []
+    #     denominator = 0
+    #     for i in range(settings.number_of_classes):
+    #         # print('Y',Y)
+    #         # print('h',h)
+    #         X = Variable(torch.FloatTensor([settings.class_values[i]]))
+    #         # print('X', X)
+    #         # log_density = []
+    #         # for count in range(1): #range(Y.shape[0]):
+    #         network_time_series = Y['network']  # [count]['network']
+    #         last_network = network_time_series[-1]
+    #         unformed_edges = NX.non_edges(last_network)
+    #         formed_edges = NX.edges(last_network)
+    #         LogDensityVeci = 0
+    #         total_edges = 0
+    #
+    #         for non_edge in unformed_edges:
+    #             LogDensityVeci += torch.log(self.non_edge_probability(non_edge, last_network, X))  # X[count]
+    #             total_edges += 1
+    #
+    #         for edge in formed_edges:
+    #             LogDensityVeci += torch.log(
+    #                 self.edge_probability(edge, network_time_series, last_network, X))  # X[count]
+    #             total_edges += 1
+    #
+    #         # print('pi',self.pi)
+    #         # print('X',X)
+    #         # print('self.pi', self.pi)
+    #         # print('self.pi[X]', self.pi[0])
+    #         numerators += [torch.exp(LogDensityVeci + torch.log(self.pi[i]))]  # /total_edges # /total_edges X[count]
+    #         denominator += torch.exp(LogDensityVeci + torch.log(self.pi[i]))
+    #     log_densities = torch.squeeze(torch.log(torch.div(torch.stack(numerators), denominator)))
+    #     return log_densities  # torch.squeeze(torch.stack(log_density))
