@@ -40,9 +40,9 @@ if __name__ == '__main__':
 
     # eval posterior estimators
     # TODO: plot theta vs estimate thetas figure
-    for theta in [1,2,3,4]:
+    for theta in [2,3,4,5,6]:
         error, thetas = eval_posterior(theta, model.recognition_model, model.generative_model,
-                                       n_samples=5, n_thetas=10,
+                                       n_samples=1, n_thetas=10,
                                        estimator_type='posterior_mean', which_posterior='exact')
         print('theta, estimate_thetas, error: %f, %r, %f' % (theta, thetas, error))
 

@@ -11,10 +11,12 @@ import torch.optim as optim
 from torch.autograd import Variable
 from dataset import NetworkIterator
 
-# estimator_type can be 'posterior_mean', 'MAP'
+from matplotlib import pyplot as plt
+
+# estimator_type can be 'posterior_mean', 'MAP', 'median'
 # which_posterior can be 'exact', 'variational'
 def eval_posterior(theta, rec_model, gen_model, n_samples=5, n_thetas=10,
-                   estimator_type='MAP', bin_size=10, which_posterior='variational'):
+                   estimator_type='MAP', bin_size=5, which_posterior='variational'):
     selected_thetas = np.zeros(n_samples)
     for i in range(n_samples):
         y_val = dict().fromkeys(('network', 'degrees'))
@@ -30,16 +32,20 @@ def eval_posterior(theta, rec_model, gen_model, n_samples=5, n_thetas=10,
         else:
             assert False, "psoterior type is invalid."
         print('sampled_thetas:',sampled_thetas)
+        plt.hist(sampled_thetas)
+        plt.show()
         if estimator_type == 'posterior_mean':
             selected_thetas[i] = sampled_thetas.mean()
         elif estimator_type == 'MAP':
             hist, bin_edges = np.histogram(sampled_thetas, bins=bin_size)
             j = np.argmax(hist)
-            selected_thetas[i] = (bin_edges[j] + bin_edges[j+1]) / 2.
+            selected_thetas[i] = (bin_edges[j] + bin_edges[j+1]) / 2.0
+        elif estimator_type == 'median':
+            selected_thetas[i] = np.median(sampled_thetas)
     error = 0
     if estimator_type == 'posterior_mean':
         error = np.sum((selected_theta - theta)**2 for selected_theta in selected_thetas)
-    elif estimator_type == 'MAP':
+    elif estimator_type == 'MAP' or 'median':
         error = np.sum(abs(selected_theta - theta) for selected_theta in selected_thetas)
     error /= n_samples
     return error, selected_thetas
