@@ -2,7 +2,7 @@
 
 import numpy as np
 
-import settings
+import copy, pickle, settings
 
 import sys
 import torch
@@ -50,6 +50,9 @@ def eval_posterior(theta, rec_model, gen_model, n_samples=5, n_thetas=10,
     error /= n_samples
     return error, selected_thetas
 
+def load_from_file(file_name='model.pkl'):
+    loaded_obj = pickle.load(open('./data/'+ file_name, 'rb'))
+    return loaded_obj
 
 class bias_correction_RNN(nn.Module):
     def __init__(self, input_size=settings.number_of_features, hidden_size=settings.n_hidden,
@@ -222,7 +225,7 @@ class NVIL():
         self.opt.step()
         # self.generative_model.update_pi()
 
-    def fit(self, dataset, batch_size=1, n=10, max_epochs=100):
+    def fit(self, dataset, batch_size=1, n=10, max_epochs=100, save=False, filename='model.pkl'):
         avg_costs = []
         epoch = 0
         while epoch < max_epochs:
@@ -246,4 +249,7 @@ class NVIL():
                 avg_costs.append(L.data.numpy())
                 batch_counter += 1
             epoch += 1
+        if save:
+            model = copy.deepcopy(self)
+            pickle.dump(model, open( './data/'+ filename, 'wb'))
         return avg_costs

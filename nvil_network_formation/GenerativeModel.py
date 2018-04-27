@@ -8,7 +8,9 @@ import networkx as NX
 import torch.nn as nn
 from torch.autograd import Variable
 import settings
-import pymc as mc
+
+if settings.use_exact_posterior:
+    import pymc as mc
 
 RD.seed()
 np.random.seed()

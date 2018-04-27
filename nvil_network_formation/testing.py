@@ -13,7 +13,7 @@ import settings
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=10)
+    dataset = NetworkDataset(N=1000)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
     # training_samples_loader = utils_data.DataLoader(training_samples, batch_size,collate_fn=PadCollate(dim=0))
@@ -36,14 +36,15 @@ if __name__ == '__main__':
     model.generative_model.prior.data = torch.FloatTensor(km_pi)
   
     # fit the model
-    costs = model.fit(dataset, batch_size=20, max_epochs=1)
+    costs = model.fit(dataset, batch_size=20, max_epochs=1, save=True)
 
     # eval posterior estimators
     # TODO: plot theta vs estimate thetas figure
     for theta in [2,3,4,5,6]:
         error, thetas = eval_posterior(theta, model.recognition_model, model.generative_model,
                                        n_samples=1, n_thetas=10,
-                                       estimator_type='posterior_mean', which_posterior='exact')
+                                       estimator_type='posterior_mean',
+                                       which_posterior='variational')
         print('theta, estimate_thetas, error: %f, %r, %f' % (theta, thetas, error))
 
     # plot ELBO
