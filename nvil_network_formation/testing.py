@@ -28,8 +28,11 @@ if __name__ == '__main__':
     # rec_params = dict([('NN_Params', NN_Params)])
     xdim = dataset.get_dim()
     gen_params = dict([])
-    model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
-                 NetworkFormationRecognition, xdim, learning_rate=3e-3)
+    if settings.load_model:
+        model = NVIL.load_model('rec.model', 'gen.model', 'bias.model', 'params.pkl')
+    else:
+        model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
+                     NetworkFormationRecognition, xdim, learning_rate=3e-3)
 
     km_pi = list(np.linspace((settings.class_values[0]-1),(settings.class_values[-1]+1),100))
     print(km_pi)

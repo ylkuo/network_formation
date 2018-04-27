@@ -2,7 +2,7 @@
 
 import numpy as np
 
-import copy, pickle, settings
+import pickle, settings
 
 import sys
 import torch
@@ -49,10 +49,6 @@ def eval_posterior(theta, rec_model, gen_model, n_samples=5, n_thetas=10,
         error = np.sum(abs(selected_theta - theta) for selected_theta in selected_thetas)
     error /= n_samples
     return error, selected_thetas
-
-def load_from_file(file_name='model.pkl'):
-    loaded_obj = pickle.load(open('./data/'+ file_name, 'rb'))
-    return loaded_obj
 
 class bias_correction_RNN(nn.Module):
     def __init__(self, input_size=settings.number_of_features, hidden_size=settings.n_hidden,
@@ -107,26 +103,37 @@ class NVIL():
                  # rec_params, # dictionary of approximate posterior ("recognition model") parameters
                  REC_MODEL, # class that inherits from RecognitionModel
                  number_of_classes=2, # dimensionality of latent state
-                 learning_rate=3e-4):
+                 learning_rate=3e-4,
+                 use_load_model=False,
+                 bias_model=None):
 
         self.number_of_classes = number_of_classes
 
         #---------------------------------------------------------
-        # instantiate our prior & recognition models
-        self.recognition_model = REC_MODEL(self.number_of_classes)
-        # print(gen_params)
-        self.generative_model = GEN_MODEL(gen_params)
+        if use_load_model:
+            self.recognition_model = REC_MODEL
+            self.generative_model = GEN_MODEL
+            self.bias_correction = bias_model
+            self.c = opt_params['c0']
+            self.v = opt_params['v0']
+            self.alpha = opt_params['alpha']
+        else:
+            # instantiate our prior & recognition models
+            self.recognition_model = REC_MODEL(self.number_of_classes)
+            # print(gen_params)
+            self.generative_model = GEN_MODEL(gen_params)
 
-        # NVIL Bias-correction network
-        self.bias_correction = bias_correction_RNN(input_size = settings.number_of_features, hidden_size = settings.n_hidden,
-                 num_layers = settings.NUM_LAYERS, output_size = 1)
+            # NVIL Bias-correction network
+            self.bias_correction = bias_correction_RNN(input_size = settings.number_of_features, hidden_size = settings.n_hidden,
+                     num_layers = settings.NUM_LAYERS, output_size = 1)
  
-        # Set NVIL params
-        self.c = torch.FloatTensor([opt_params['c0']])
-        self.v = torch.FloatTensor([opt_params['v0']])
-        self.alpha = torch.FloatTensor([opt_params['alpha']])
+            # Set NVIL params
+            self.c = torch.FloatTensor([opt_params['c0']])
+            self.v = torch.FloatTensor([opt_params['v0']])
+            self.alpha = torch.FloatTensor([opt_params['alpha']])
 
         # ADAM defaults
+        self.learning_rate = learning_rate
         self.opt = optim.Adam(list(self.generative_model.parameters()) + list(self.recognition_model.parameters()) +
                               list(self.bias_correction.parameters()),
                               lr=learning_rate)
@@ -225,7 +232,31 @@ class NVIL():
         self.opt.step()
         # self.generative_model.update_pi()
 
-    def fit(self, dataset, batch_size=1, n=10, max_epochs=100, save=False, filename='model.pkl'):
+    def save_model(self):
+        torch.save(self.recognition_model, './data/rec.model')
+        torch.save(self.generative_model, './data/gen.model')
+        torch.save(self.bias_correction, './data/bias.model')
+        params = {'c': self.c, 'v': self.v, 'alpha': self.alpha,
+                  'lr': self.learning_rate, 'num_classes': self.number_of_classes}
+        pickle.dump(params, open('./data/params.pkl', 'wb'))
+
+    @staticmethod
+    def load_model(rec_model, gen_model, bias_model, param):
+        rec_model = torch.load('./data/'+ rec_model)
+        gen_model = torch.load('./data/'+ gen_model)
+        bias_model = torch.load('./data/'+ bias_model)
+        param = pickle.load(open('./data/'+ param, 'rb'))
+        return NVIL(opt_params={'c0': param['c'], 'v0': param['v'], 'alpha': param['alpha']},
+                    gen_params=None,
+                    GEN_MODEL=gen_model,
+                    REC_MODEL=rec_model,
+                    number_of_classes=param['num_classes'],
+                    learning_rate=param['lr'],
+                    use_load_model=True,
+                    bias_model=bias_model)
+
+
+    def fit(self, dataset, batch_size=1, n=10, max_epochs=100, save=False):
         avg_costs = []
         epoch = 0
         while epoch < max_epochs:
@@ -250,6 +281,5 @@ class NVIL():
                 batch_counter += 1
             epoch += 1
         if save:
-            model = copy.deepcopy(self)
-            pickle.dump(model, open( './data/'+ filename, 'wb'))
+            self.save_model()
         return avg_costs

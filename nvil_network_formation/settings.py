@@ -39,3 +39,5 @@ class_values = [2, 4, 6] #list(range(number_of_classes))
 support = class_values[-1] - class_values[0] + 2
 
 use_exact_posterior = False
+
+load_model = True
