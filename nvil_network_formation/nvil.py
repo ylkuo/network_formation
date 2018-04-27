@@ -233,19 +233,20 @@ class NVIL():
         # self.generative_model.update_pi()
 
     def save_model(self):
-        torch.save(self.recognition_model, './data/rec.model')
-        torch.save(self.generative_model, './data/gen.model')
-        torch.save(self.bias_correction, './data/bias.model')
+        model_path = settings.save_model_path
+        torch.save(self.recognition_model, model_path + 'rec.model')
+        torch.save(self.generative_model, model_path + 'gen.model')
+        torch.save(self.bias_correction, model_path + 'bias.model')
         params = {'c': self.c, 'v': self.v, 'alpha': self.alpha,
                   'lr': self.learning_rate, 'num_classes': self.number_of_classes}
-        pickle.dump(params, open('./data/params.pkl', 'wb'))
+        pickle.dump(params, open(model_path + 'params.pkl', 'wb'))
 
     @staticmethod
-    def load_model(rec_model, gen_model, bias_model, param):
-        rec_model = torch.load('./data/'+ rec_model)
-        gen_model = torch.load('./data/'+ gen_model)
-        bias_model = torch.load('./data/'+ bias_model)
-        param = pickle.load(open('./data/'+ param, 'rb'))
+    def load_model(model_path):
+        rec_model = torch.load(model_path + 'rec.model')
+        gen_model = torch.load(model_path + 'gen.model')
+        bias_model = torch.load(model_path + 'bias.model')
+        param = pickle.load(open(model_path + 'params.pkl', 'rb'))
         return NVIL(opt_params={'c0': param['c'], 'v0': param['v'], 'alpha': param['alpha']},
                     gen_params=None,
                     GEN_MODEL=gen_model,

@@ -41,3 +41,5 @@ support = class_values[-1] - class_values[0] + 2
 use_exact_posterior = False
 
 load_model = True
+load_model_path = './data/model_2000/'
+save_model_path = './data/model_3000/'

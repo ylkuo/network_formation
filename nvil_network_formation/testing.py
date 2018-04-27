@@ -29,7 +29,7 @@ if __name__ == '__main__':
     xdim = dataset.get_dim()
     gen_params = dict([])
     if settings.load_model:
-        model = NVIL.load_model('rec.model', 'gen.model', 'bias.model', 'params.pkl')
+        model = NVIL.load_model(settings.load_model_path)
     else:
         model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
                      NetworkFormationRecognition, xdim, learning_rate=3e-3)
