@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 
 class Estimator():
-    def __init__(self, true_thetas, rec_model, gen_model, n_samples=5, n_posterior_samples=10,
+    def __init__(self, rec_model, gen_model, n_samples=5, n_posterior_samples=10,
                    estimator_type='MAP', bin_size=5, which_posterior='variational',error_type='MSE'):
         self.rec_model = rec_model
         self.gen_model = gen_model
