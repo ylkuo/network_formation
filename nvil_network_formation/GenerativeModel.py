@@ -162,9 +162,9 @@ class UtilityModel(NetworkModel):
             #     [self.params['lower_limit'], self.params['upper_limit']])  # np.random.normal(0, 1)#
 
         if 'theta_3' not in utility_params:
-            self.params['theta_3'] = 5  # np.random.normal(0, 1)
+            self.params['theta_3'] = 0.1  # np.random.normal(0, 1)
         if 'sparsity' not in utility_params:
-            self.params['sparsity'] = 500 * np.sqrt(8 / self.params['size'])
+            self.params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
         # there should be better ways to set the parameters theta_0 and theta_3 (determining the sparsity) based on the
         # final edge density or something like that in the observed data.
 
@@ -218,7 +218,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         return copy.deepcopy(dummy1), copy.copy(dummy2)
 
     def sampleXY(self, _N):
-        _prior = np.asarray(torch.clamp(self.prior, 0.001, 0.999).data)
+        _prior = np.asarray(self.prior.data)
         # b_vals = np.random.multinomial(1, _prior, size=_N) # a binary vector of all zero entry except one (the chosen class)
         # x_vals = b_vals.nonzero()[1] # the index of the chosen class
         #
@@ -266,8 +266,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
         utility_params = dict.fromkeys(['theta_0','theta_1','theta_2','theta_3','sparsity'])
         utility_params['theta_0'] = 0
         utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 5
-        utility_params['sparsity'] = 500 * np.sqrt(8 / 20)
+        utility_params['theta_3'] = 0.1
+        utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
         self.set_utility_params(utility_params)
 
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[non_edge[0]]['position'][0] - \
@@ -289,8 +289,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
         utility_params = dict.fromkeys(['theta_0', 'theta_1', 'theta_2', 'theta_3', 'sparsity'])
         utility_params['theta_0'] = 0
         utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 5
-        utility_params['sparsity'] = 500 * np.sqrt(8 / 20)
+        utility_params['theta_3'] = 0.1
+        utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
         self.set_utility_params(utility_params)
 
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[edge[0]]['position'][0] - \
