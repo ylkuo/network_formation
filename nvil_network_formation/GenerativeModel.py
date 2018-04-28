@@ -429,10 +429,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # for i in range(n_samples):
         #     print('i:',i)
         model = mc.MCMC([infer_theta, network_likelihood_model])
-        model.isample(iter=MH_iter, burn=burn_in, thin=thin, progress_bar=True)
+        model.sample(iter=MH_iter, burn=burn_in, thin=thin, progress_bar=False)
         posterior_samples = model.trace('infer_theta')[:]
-        print(print('posterior_samples inside MCMC shape', posterior_samples.shape))
-        print('posterior_samples inside MCMC', posterior_samples)
+        # print(print('posterior_samples inside MCMC shape', posterior_samples.shape))
+        # print('posterior_samples inside MCMC', posterior_samples)
 
         # posterior_mean = np.mean(model.trace('infer_theta')[:])
         return posterior_samples  # torch.squeeze(torch.stack(log_density))
