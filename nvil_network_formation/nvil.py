@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 
 class Estimator():
     def __init__(self, rec_model, gen_model, n_samples=5, n_posterior_samples=10,
-                   estimator_type='MAP', bin_size=5, which_posterior='variational',error_type='MSE'):
+                 estimator_type='MAP', bin_size=5, which_posterior='variational',error_type='MSE'):
         self.rec_model = rec_model
         self.gen_model = gen_model
         self.n_samples = n_samples # number of samples generated for each true thetta to test the estimator for
@@ -65,14 +65,15 @@ class Estimator():
         error /= self.n_samples
         return error, theta_estimates
 
-    def get_estimates_for_true_thetas(self, true_thetas=[2,4,6], do_plot=True, symmetric=False,verbose=True):
+    def get_estimates_for_true_thetas(self, true_thetas=[2,4,6], do_plot=True,
+                                      symmetric=False, do_hist=False, verbose=True):
         estimated_thetas = [] # a list of theta_estimated for each true_theta
         mean_estimated_thetas = []
         errors = []
         for true_theta in true_thetas:
             if verbose:
                 print('true theta:', true_theta)
-            theta_error, theta_estimates = self.get_estimates(true_theta, do_hist=False)
+            theta_error, theta_estimates = self.get_estimates(true_theta, do_hist=do_hist)
             estimated_thetas += [theta_estimates]
             mean_estimated_thetas += [np.mean(theta_estimates)]
             errors += [theta_error]

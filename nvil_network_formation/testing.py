@@ -34,12 +34,13 @@ if __name__ == '__main__':
         model = NVIL(opt_params, settings.gen_model_params, NetworkFormationGenerativeModel,
                      NetworkFormationRecognition, xdim, learning_rate=3e-3)
 
-    km_pi = list(np.linspace((settings.class_values[0]-1),(settings.class_values[-1]+1),100))
-    print(km_pi)
-    model.generative_model.prior.data = torch.FloatTensor(km_pi)
-  
-    # fit the model
-    costs = model.fit(dataset, batch_size=20, max_epochs=1, save=True)
+    if settings.is_train:
+        km_pi = list(np.linspace((settings.class_values[0]-1),(settings.class_values[-1]+1),100))
+        print(km_pi)
+        model.generative_model.prior.data = torch.FloatTensor(km_pi)
+
+        # fit the model
+        costs = model.fit(dataset, batch_size=20, max_epochs=1, save=True)
 
     # eval posterior estimators
     # TODO: plot theta vs estimate thetas figure
@@ -50,16 +51,24 @@ if __name__ == '__main__':
     #                                    which_posterior='variational')
     #     print('theta, estimate_thetas, error: %f, %r, %f' % (theta, thetas, error))
 
-    true_thetas = [2,3,4,5,6]
-    estimator = Estimator(true_thetas, model.recognition_model, model.generative_model, n_samples=5,
-                          n_posterior_samples=10,
-                          estimator_type='posterior_mean', bin_size=5, which_posterior='variational', error_type='MSE')
-    estimator.get_estimates_for_true_thetas(true_thetas, do_plot=True, symmetric=False)
+    true_thetas = [2,4,6,8]
+    estimator = Estimator(model.recognition_model,
+                          model.generative_model,
+                          n_samples=10,
+                          n_posterior_samples=300,
+                          estimator_type='posterior_mean',
+                          bin_size=15,
+                          which_posterior='variational',
+                          error_type='MSE')
+    estimator.get_estimates_for_true_thetas(true_thetas, do_plot=True,
+                                            symmetric=False, do_hist=False)
 
-    # plot ELBO
-    plt.figure()
-    plt.plot(costs)
-    plt.axis('tight')
-    plt.xlabel('iteration')
-    plt.ylabel('ELBO\n(averaged over minibatch)')
-    plt.show()
+    if settings.is_train:
+        # plot ELBO
+        plt.figure()
+        plt.plot(costs)
+        plt.axis('tight')
+        plt.xlabel('iteration')
+        plt.ylabel('ELBO\n(averaged over minibatch)')
+        plt.show()
+
