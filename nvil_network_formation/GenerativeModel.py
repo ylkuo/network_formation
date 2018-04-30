@@ -248,19 +248,14 @@ class NetworkFormationGenerativeModel(UtilityModel):
             yield params
 
     def update_pi(self):
-        #print('self.pi in update_pi',self.pi)
-        self.prior = self.prior #self.prior_un / self.prior_un.sum()
+
+        self.prior = self.prior
 
     def normal_cdf(self, value):
-        # print(value.type(torch.FloatTensor))
-        # print('value', value.data)
-        # print('value',value)
-        z = torch.div(value, math.sqrt(2))#.type(torch.FloatTensor)
-        # print('z', z)
-        # z = value/math.sqrt(2)
-        # print('z',z)
+        z = torch.div(value, math.sqrt(2))
+
         return 0.5 * (1 + torch.erf(z.type(torch.FloatTensor)))
-        #0.5 * (1 + torch.erf(torch.FloatTensor([value /math.sqrt(2)])))
+
 
     def non_edge_probability(self, non_edge, lastnetwork, theta_2):
         utility_params = dict.fromkeys(['theta_0','theta_1','theta_2','theta_3','sparsity'])
@@ -278,12 +273,13 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         distance = 0.1 * distance_investments + distance_risk_attitudes
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, non_edge[0], non_edge[1]))
+
         epsilon_upperbound = - self.params['theta_0'] - \
                              theta_2 * (1.0 * (len(list_common_neighbors) > 0)) + \
                              (1 / self.params['sparsity']) * distance
 
-        # print(epsilon_upperbound)
-        return self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))#.type(torch.FloatTensor)
+
+        return self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))
 
     def edge_probability(self, edge, network_time_series, lastnetwork, theta_2):
         utility_params = dict.fromkeys(['theta_0', 'theta_1', 'theta_2', 'theta_3', 'sparsity'])
@@ -304,39 +300,42 @@ class NetworkFormationGenerativeModel(UtilityModel):
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, edge[0], edge[1]))
 
         if edge in NX.edges(network_time_series[0]):
-            probability_of_the_edge = 1 # the initial edges are there with probability one (computations are conditioned
+            probability_of_the_edge = 1
+            # the initial edges are there with probability one (computations are conditioned
             # on the initial condition)
+
         elif len(list_common_neighbors) == 0:
             epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
-            # print('epsilon_upperbound:', epsilon_upperbound,epsilon_upperbound.shape)
+
             epsilon_upperbound = Variable(torch.FloatTensor([epsilon_upperbound]))
-            # print('epsilon_upperbound:', epsilon_upperbound,epsilon_upperbound.shape)
-            probability_of_the_edge = self.normal_cdf(epsilon_upperbound) # needs to be fixed!!
+
+            epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
+
+            probability_of_the_edge = self.normal_cdf(epsilon_upperbound)
+
         elif len(list_common_neighbors) > 0:
             product_term = 1
             for i in range(len(network_time_series)):
-                # print('network_time_series')
-                # print(len(list(NX.non_edges(network_time_series[i]))))
                 number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
                 if edge in NX.non_edges(network_time_series[i]):
                     product_term *= (1 - 1 / number_of_non_edges)
                 else:
                     break
 
-            # print('theta_2',theta_2)
             epsilon_lowerbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance - theta_2 * (1.0)
             # it has too many [[[[[]]]]]
-            # print(epsilon_lowerbound,epsilon_lowerbound.shape)
+
             epsilon_lowerbound = np.reshape(epsilon_lowerbound, 1)[-1]  # taking epsilon_lowerbound out of [[[[[]]]]]
 
-            # print(epsilon_lowerbound,epsilon_lowerbound.shape)
+            epsilon_lowerbound = torch.div(epsilon_lowerbound, self.params['theta_3'])
+
 
             epsilon_upperbound = Variable(torch.FloatTensor([- self.params['theta_0'] +
                                                              (1 / self.params['sparsity']) * distance]))
 
-            # print('epsilon_lowerbound', epsilon_lowerbound)  # it has too many [[[[[]]]]]
-            # print('epsilon_upperbound', epsilon_upperbound)   # needed to be wrapped inside a variable
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
+
+
             probability_of_the_edge = (self.normal_cdf(epsilon_upperbound) -  self.normal_cdf(epsilon_lowerbound)) + \
                                       product_term * (1 - self.normal_cdf(epsilon_upperbound))
         return probability_of_the_edge
@@ -429,7 +428,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # for i in range(n_samples):
         #     print('i:',i)
         model = mc.MCMC([infer_theta, network_likelihood_model])
-        model.sample(iter=MH_iter, burn=burn_in, thin=thin, progress_bar=False)
+        model.sample(iter=MH_iter, burn=burn_in, thin=thin, progress_bar=True)
         posterior_samples = model.trace('infer_theta')[:]
         # print(print('posterior_samples inside MCMC shape', posterior_samples.shape))
         # print('posterior_samples inside MCMC', posterior_samples)
