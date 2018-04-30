@@ -21,7 +21,7 @@ class Estimator():
                  estimator_type='MAP', bin_size=5, which_posterior='variational',error_type='MSE'):
         self.rec_model = rec_model
         self.gen_model = gen_model
-        self.n_samples = n_samples # number of samples generated for each true thetta to test the estimator for
+        self.n_samples = n_samples # number of samples generated for each true theta to test the estimator for
         # the given theta
         self.n_posterior_samples = n_posterior_samples # number of samples from the posterior toi construct an estimator
         self.estimator_type=estimator_type # estimator_type can be 'posterior_mean', 'MAP', 'median'
@@ -46,8 +46,8 @@ class Estimator():
             # print('sampled_thetas:',sampled_thetas)
             if do_hist:
                 plt.hist(sampled_thetas)
+                plt.title('Posterior Samples for theta = ' + str(theta))
                 plt.show()
-                plt.title('Posterior Samples for theta = '+str(theta))
             # print(self.estimator_type)
             if self.estimator_type == 'posterior_mean':
                 theta_estimates[i] = sampled_thetas.mean()
@@ -72,13 +72,13 @@ class Estimator():
         errors = []
         for true_theta in true_thetas:
             if verbose:
-                print('true theta:', true_theta)
+                print('getting estimates for true theta:', true_theta)
             theta_error, theta_estimates = self.get_estimates(true_theta, do_hist=do_hist)
             estimated_thetas += [theta_estimates]
             mean_estimated_thetas += [np.mean(theta_estimates)]
             errors += [theta_error]
             if verbose:
-                print('theta estimates:', theta_estimates)
+                print('true theta:', true_theta,'theta estimates:', theta_estimates)
         if do_plot:
             if symmetric:
                 plt.figure()
@@ -95,57 +95,13 @@ class Estimator():
                     lower_errors += [abs(np.min(theta_estimates) - true_thetas[i])]
                     upper_errors += [abs(np.max(theta_estimates) - - true_thetas[i])]
                 asymmetric_errors = [lower_errors, upper_errors]
-                # lower_errors = []
-                # upper_errors = []
-                # for theta_estimates in estimated_thetas:
-                #     lower_errors += [np.min(theta_estimates)]
-                #     upper_errors += [np.max(theta_estimates)]
-                # asymmetric_errors = [lower_errors, upper_errors]
                 plt.figure()
                 plt.errorbar(true_thetas, mean_estimated_thetas, yerr=asymmetric_errors)
-                plt.title(self.estimator_type + 'performance')
+                plt.title(self.estimator_type + ' performance ')
                 plt.xlabel('true theta')
                 plt.ylabel(self.estimator_type)
                 plt.show()
 
-
-# Replaced with the Estimator class:
-# estimator_type can be 'posterior_mean', 'MAP', 'median'
-# which_posterior can be 'exact', 'variational'
-# def eval_posterior(theta, rec_model, gen_model, n_samples=5, n_thetas=10,
-#                    estimator_type='MAP', bin_size=5, which_posterior='variational'):
-#     selected_thetas = np.zeros(n_samples)
-#     for i in range(n_samples):
-#         y_val = dict().fromkeys(('network', 'degrees'))
-#         y_val['network'], y_val['degrees'] = gen_model.get_y(theta)
-#         sampled_thetas = np.zeros(n_thetas)
-#
-#         if which_posterior == 'variational':
-#             for j in range(n_thetas):
-#                 sampled_theta = rec_model.getSample(y_val)
-#                 sampled_thetas[j] = sampled_theta.data[0]
-#         elif which_posterior == 'exact':
-#             sampled_thetas = gen_model.get_exact_posterior_samples(y_val,n_thetas)
-#         else:
-#             assert False, "psoterior type is invalid."
-#         print('sampled_thetas:',sampled_thetas)
-#         plt.hist(sampled_thetas)
-#         plt.show()
-#         if estimator_type == 'posterior_mean':
-#             selected_thetas[i] = sampled_thetas.mean()
-#         elif estimator_type == 'MAP':
-#             hist, bin_edges = np.histogram(sampled_thetas, bins=bin_size)
-#             j = np.argmax(hist)
-#             selected_thetas[i] = (bin_edges[j] + bin_edges[j+1]) / 2.0
-#         elif estimator_type == 'median':
-#             selected_thetas[i] = np.median(sampled_thetas)
-#     error = 0
-#     if estimator_type == 'posterior_mean':
-#         error = np.sum((selected_theta - theta)**2 for selected_theta in selected_thetas)
-#     elif estimator_type == 'MAP' or 'median':
-#         error = np.sum(abs(selected_theta - theta) for selected_theta in selected_thetas)
-#     error /= n_samples
-#     return error, selected_thetas
 
 class bias_correction_RNN(nn.Module):
     def __init__(self, input_size=settings.number_of_features, hidden_size=settings.n_hidden,
