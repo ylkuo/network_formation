@@ -90,10 +90,17 @@ class Estimator():
             else: # not symmetric
                 lower_errors = []
                 upper_errors = []
-                for theta_estimates in estimated_thetas:
-                    lower_errors += [np.min(theta_estimates)]
-                    upper_errors += [np.max(theta_estimates)]
+                for i in range(len(true_thetas)):
+                    theta_estimates = estimated_thetas[i]
+                    lower_errors += [abs(np.min(theta_estimates) - true_thetas[i])]
+                    upper_errors += [abs(np.max(theta_estimates) - - true_thetas[i])]
                 asymmetric_errors = [lower_errors, upper_errors]
+                # lower_errors = []
+                # upper_errors = []
+                # for theta_estimates in estimated_thetas:
+                #     lower_errors += [np.min(theta_estimates)]
+                #     upper_errors += [np.max(theta_estimates)]
+                # asymmetric_errors = [lower_errors, upper_errors]
                 plt.figure()
                 plt.errorbar(true_thetas, mean_estimated_thetas, yerr=asymmetric_errors)
                 plt.title(self.estimator_type + 'performance')
