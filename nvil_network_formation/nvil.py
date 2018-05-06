@@ -1,19 +1,14 @@
 # Class for Neural Variational Inference and Learning (NVIL)
 
 import numpy as np
-
 import pickle, settings
-
 import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from dataset import NetworkIterator
-
 from matplotlib import pyplot as plt
-
-
 
 
 class Estimator():

@@ -13,7 +13,9 @@ import settings
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=10)
+    dataset = NetworkDataset(N=50)
+    print(dataset.get_avg_length_time_series())
+    # exit(0)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
     # training_samples_loader = utils_data.DataLoader(training_samples, batch_size,collate_fn=PadCollate(dim=0))
@@ -42,24 +44,16 @@ if __name__ == '__main__':
         # fit the model
         costs = model.fit(dataset, batch_size=20, max_epochs=1, save=True)
 
-    # eval posterior estimators
-    # TODO: plot theta vs estimate thetas figure
-    # for theta in [2,3,4,5,6]:
-    #     error, thetas = eval_posterior(theta, model.recognition_model, model.generative_model,
-    #                                    n_samples=1, n_thetas=10,
-    #                                    estimator_type='posterior_mean',
-    #                                    which_posterior='variational')
-    #     print('theta, estimate_thetas, error: %f, %r, %f' % (theta, thetas, error))
 
-    true_thetas = [2,4,6,8]
+    true_thetas = [2,4,6]
     estimator = Estimator(model.recognition_model,
                           model.generative_model,
-                          n_samples=10,
-                          n_posterior_samples=300,
-                          estimator_type='posterior_mean',
+                          n_samples=4,
+                          n_posterior_samples=100,
+                          estimator_type='MAP',
                           bin_size=15,
-                          which_posterior='variational',
-                          error_type='MSE')
+                          which_posterior='exact',
+                          error_type='MAE')
     estimator.get_estimates_for_true_thetas(true_thetas, do_plot=True,
                                             symmetric=False, do_hist=False)
 

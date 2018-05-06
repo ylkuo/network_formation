@@ -162,7 +162,7 @@ class UtilityModel(NetworkModel):
             #     [self.params['lower_limit'], self.params['upper_limit']])  # np.random.normal(0, 1)#
 
         if 'theta_3' not in utility_params:
-            self.params['theta_3'] = 0.1  # np.random.normal(0, 1)
+            self.params['theta_3'] = 5  # np.random.normal(0, 1)
         if 'sparsity' not in utility_params:
             self.params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
         # there should be better ways to set the parameters theta_0 and theta_3 (determining the sparsity) based on the
@@ -256,12 +256,11 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         return 0.5 * (1 + torch.erf(z.type(torch.FloatTensor)))
 
-
     def non_edge_probability(self, non_edge, lastnetwork, theta_2):
         utility_params = dict.fromkeys(['theta_0','theta_1','theta_2','theta_3','sparsity'])
         utility_params['theta_0'] = 0
         utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 0.1
+        utility_params['theta_3'] = 5
         utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
         self.set_utility_params(utility_params)
 
@@ -278,14 +277,18 @@ class NetworkFormationGenerativeModel(UtilityModel):
                              theta_2 * (1.0 * (len(list_common_neighbors) > 0)) + \
                              (1 / self.params['sparsity']) * distance
 
+        probability_non_edge = self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))
 
-        return self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))
+        # print('probability_non_edge',probability_non_edge)
+
+        return probability_non_edge
 
     def edge_probability(self, edge, network_time_series, lastnetwork, theta_2):
+        # print('we are here')
         utility_params = dict.fromkeys(['theta_0', 'theta_1', 'theta_2', 'theta_3', 'sparsity'])
         utility_params['theta_0'] = 0
         utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 0.1
+        utility_params['theta_3'] = 5
         utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
         self.set_utility_params(utility_params)
 
@@ -299,28 +302,83 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, edge[0], edge[1]))
 
-        if edge in NX.edges(network_time_series[0]):
-            probability_of_the_edge = 1
+        # find the time of formation:
+        formation_time = 0
+        for i in range(len(network_time_series)):
+            # print('i',i)
+            if edge in NX.edges(network_time_series[i]):  # edge is formed at time i
+                # print('true',i)
+                formation_time = i
+                break
+
+        # print(formation_time)
+        # print(edge)
+        # print(lastnetwork.edges())
+        #
+        # print(network_time_series[0].edges())
+
+        if len(list_common_neighbors) > 0:
+            # find the common_neighbor_time:
+            common_neighbor_time = 0
+            for i in range(len(network_time_series)):
+                list_common_neighbors = list(NX.common_neighbors(network_time_series[i], edge[0], edge[1]))
+                if len(list_common_neighbors) > 0:  # common_neighbor exists at time i
+                    common_neighbor_time = i
+                    break
+        else:  # common_neighbors never obtained
+            common_neighbor_time = len(network_time_series)+1
+
+
+        assert common_neighbor_time != formation_time, "three edges of a triangle are formed at the same time!!!"
+
+        if formation_time == 0:  # initial edges
+            probability_of_the_edge = torch.FloatTensor([1.0])
             # the initial edges are there with probability one (computations are conditioned
             # on the initial condition)
+            # print('probability_of_the_edge case 1', probability_of_the_edge)
 
-        elif len(list_common_neighbors) == 0:
+        elif len(list_common_neighbors) == 0 or common_neighbor_time > formation_time:
+            # no common neighbor at the time of link formation decision
+            product_term = 1
+            for i in range(formation_time):
+                if i < formation_time -1:
+                    number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
+                    product_term *= (1 - 1 / number_of_non_edges)
+                elif i == formation_time -1:
+                    number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
+                    product_term *= (1 / number_of_non_edges)
+
             epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
 
             epsilon_upperbound = Variable(torch.FloatTensor([epsilon_upperbound]))
 
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
 
-            probability_of_the_edge = self.normal_cdf(epsilon_upperbound)
+            probability_of_the_edge = product_term*self.normal_cdf(epsilon_upperbound)
 
-        elif len(list_common_neighbors) > 0:
-            product_term = 1
-            for i in range(len(network_time_series)):
-                number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
-                if edge in NX.non_edges(network_time_series[i]):
-                    product_term *= (1 - 1 / number_of_non_edges)
-                else:
-                    break
+            # print('product_term',product_term)
+            # print('probability_of_the_edge case 2',probability_of_the_edge)
+
+        elif common_neighbor_time < formation_time:
+
+            first_product_term = 1
+            for i in range(formation_time):
+                if i < formation_time -1:
+                    number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
+                    first_product_term *= (1 - 1 / number_of_non_edges)
+                elif i == formation_time -1:
+                    number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
+                    first_product_term *= (1 / number_of_non_edges)
+
+            second_product_term = 1
+            for i in range(common_neighbor_time, formation_time):
+                if i < formation_time -1:
+                    number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
+                    second_product_term *= (1 - 1 / number_of_non_edges)
+                elif i == formation_time -1:
+                    number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
+                    second_product_term *= (1 / number_of_non_edges)
+
 
             epsilon_lowerbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance - theta_2 * (1.0)
             # it has too many [[[[[]]]]]
@@ -335,9 +393,16 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
 
+            probability_of_the_edge = (second_product_term * (self.normal_cdf(epsilon_upperbound) -
+                                                             self.normal_cdf(epsilon_lowerbound))) + \
+                                      (first_product_term * (1 - self.normal_cdf(epsilon_upperbound)))
 
-            probability_of_the_edge = (self.normal_cdf(epsilon_upperbound) -  self.normal_cdf(epsilon_lowerbound)) + \
-                                      product_term * (1 - self.normal_cdf(epsilon_upperbound))
+            # print('first_product_term', first_product_term)
+            # print('second_product_term', second_product_term)
+
+            # print('probability_of_the_edge case 3',probability_of_the_edge)
+
+
         return probability_of_the_edge
 
     def evaluateLogDensity(self, theta_val, Y):
@@ -359,10 +424,13 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         for non_edge in unformed_edges:
             LogDensityVeci += torch.log(self.non_edge_probability(non_edge, last_network, X)) # X[count]
+            # print('non_edge',LogDensityVeci)
             total_edges += 1
 
         for edge in formed_edges:
+            # print(self.edge_probability(edge, network_time_series, last_network, X))
             LogDensityVeci += torch.log(self.edge_probability(edge, network_time_series, last_network, X)) # X[count]
+            # print('edge',LogDensityVeci)
             total_edges += 1
 
         # print('pi',self.pi)
@@ -374,7 +442,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('log_density',log_density)
         if math.isnan(log_density):
             print('theta_val:', theta_val)
-        assert not math.isnan(log_density),"log_density is nan!!!"
+        assert not math.isnan(log_density), "log_density is nan!!!"
         return log_density #torch.squeeze(torch.stack(log_density))
 
     def get_exact_posterior_samples(self, Y,n_samples=100):
@@ -428,12 +496,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # for i in range(n_samples):
         #     print('i:',i)
         model = mc.MCMC([infer_theta, network_likelihood_model])
-        model.sample(iter=MH_iter, burn=burn_in, thin=thin, progress_bar=True)
+        model.sample(iter=MH_iter, burn=burn_in, thin=thin, progress_bar=False)
         posterior_samples = model.trace('infer_theta')[:]
         # print(print('posterior_samples inside MCMC shape', posterior_samples.shape))
         # print('posterior_samples inside MCMC', posterior_samples)
 
         # posterior_mean = np.mean(model.trace('infer_theta')[:])
         return posterior_samples  # torch.squeeze(torch.stack(log_density))
-
-
