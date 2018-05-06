@@ -11,12 +11,22 @@ class NetworkDataset(object):
         [xsamp, ysamp] = self.network_formation.sampleXY(N)
         self.xsamp = xsamp
         self.ysamp = ysamp
-        # print('ysamp',ysamp)
-        # print('xsamp',xsamp)
+        print('ysamp',ysamp)
+        print('xsamp',xsamp)
 
     def get_dim(self):
         self.xdim = settings.number_of_classes
         return (self.xdim)
+
+    def get_avg_length_time_series(self):
+        sum_of_time_series_lengths = 0
+        for i in range(self.len):
+            print(len(self.ysamp[i]['network']))
+            sum_of_time_series_lengths += len(self.ysamp[i]['network'])
+        return sum_of_time_series_lengths/self.len
+
+
+
 
 class NetworkIterator(object):
     def __init__(self, dataset, batch_size=1):
