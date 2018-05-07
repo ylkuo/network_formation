@@ -4,12 +4,16 @@ from dataset import NetworkDataset, NetworkIterator
 from GenerativeModel import NetworkFormationGenerativeModel
 from nvil import *
 from RecognitionModel import NetworkFormationRecognition
-from matplotlib import pyplot as plt
 
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 import settings
+
+if not settings.show_fig:
+    import matplotlib
+    matplotlib.use('Agg')
+from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # load dataset
