@@ -6,18 +6,23 @@ import numpy as np
 import random as RD
 import networkx as NX
 import torch.nn as nn
-from torch.autograd import Variable
 import settings
 
 if settings.use_exact_posterior:
     import pymc as mc
 
+USE_CUDA = torch.cuda.is_available()
+dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+class Variable(torch.autograd.Variable):
+    def __init__(self, data, *args, **kwargs):
+        if USE_CUDA:
+            data = data.cuda()
+        super(Variable, self).__init__(data, *args, **kwargs)
+
 RD.seed()
 np.random.seed()
 
 SENTINEL = object()
-
-
 
 class NetworkModel:
 
@@ -199,10 +204,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('GenerativeParams', GenerativeParams)
         if 'prior' in GenerativeParams:
 
-            self.prior_un = nn.Parameter(torch.FloatTensor(np.asarray(GenerativeParams['prior'])), requires_grad=True)
+            self.prior_un = nn.Parameter(torch.from_numpy(np.asarray(GenerativeParams['prior'])).type(dtype), requires_grad=True)
         else:
             # self.prior_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(settings.number_of_classes))), requires_grad=True)
-            self.prior_un = nn.Parameter(torch.FloatTensor(np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)), requires_grad=True)
+            self.prior_un = nn.Parameter(torch.from_numpy(np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)).type(dtype), requires_grad=True)
             # what is the 100*??? should n't it be np.ones(xDim)
         self.prior = self.prior_un#/(settings.support)
         # print('self.pi in init NetFormationGenModel',self.pi)
@@ -213,7 +218,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         degrees_df, networks = self.generate_time_series(utility_params, suply_network_timeseries=True)
         dummy1 = copy.copy(networks)
         #y_vals[ii]['network'] = copy.deepcopy(dummy1)
-        dummy2 = copy.copy(torch.FloatTensor(degrees_df.values[:, 0:self.params['feature_length']]))
+        dummy2 = copy.copy(torch.from_numpy(degrees_df.values[:, 0:self.params['feature_length']]).type(dtype))
         #y_vals[ii]['degrees'] = copy.copy(dummy2)
         return copy.deepcopy(dummy1), copy.copy(dummy2)
 
@@ -254,7 +259,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
     def normal_cdf(self, value):
         z = torch.div(value, math.sqrt(2))
 
-        return 0.5 * (1 + torch.erf(z.type(torch.FloatTensor)))
+        return 0.5 * (1 + torch.erf(z.type(dtype)))
 
     def non_edge_probability(self, non_edge, lastnetwork, theta_2):
         utility_params = dict.fromkeys(['theta_0','theta_1','theta_2','theta_3','sparsity'])
@@ -332,7 +337,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         assert common_neighbor_time != formation_time, "three edges of a triangle are formed at the same time!!!"
 
         if formation_time == 0:  # initial edges
-            probability_of_the_edge = torch.FloatTensor([1.0])
+            probability_of_the_edge = torch.from_numpy(np.asarray([1.0])).type(dtype)
             # the initial edges are there with probability one (computations are conditioned
             # on the initial condition)
             # print('probability_of_the_edge case 1', probability_of_the_edge)
@@ -350,7 +355,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
             epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
 
-            epsilon_upperbound = Variable(torch.FloatTensor([epsilon_upperbound]))
+            epsilon_upperbound = Variable(torch.from_numpy(np.asarray([epsilon_upperbound])).type(dtype))
 
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
 
@@ -388,8 +393,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
             epsilon_lowerbound = torch.div(epsilon_lowerbound, self.params['theta_3'])
 
 
-            epsilon_upperbound = Variable(torch.FloatTensor([- self.params['theta_0'] +
-                                                             (1 / self.params['sparsity']) * distance]))
+            epsilon_upperbound = Variable(torch.from_numpy(np.asarray([- self.params['theta_0'] +
+                                                        (1 / self.params['sparsity']) * distance])).type(dtype))
 
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
 
@@ -437,7 +442,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('X',X)
         # print('pi', self.pi)
         # print('self.pi[X]', self.pi[X])
-        log_density = (LogDensityVeci + torch.log(Variable(torch.FloatTensor([1/settings.support])))) #  #/total_edges # /total_edges X[count]
+        log_density = (LogDensityVeci + torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype)))) #  #/total_edges # /total_edges X[count]
 
         # print('log_density',log_density)
         if math.isnan(log_density):
@@ -456,7 +461,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         @mc.stochastic(observed=True)
         def network_likelihood_model(value=data,infer_theta=infer_theta):
             # print('infer_theta:', infer_theta.tolist())
-            X = Variable(torch.FloatTensor([infer_theta.tolist()]))
+            X = Variable(torch.from_numpy(np.asarray([infer_theta.tolist()])).type(dtype))
             # print('data:', data)
             # print('value:',value)
             network_time_series = data
@@ -476,10 +481,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # print('X',X)
             # print('self.pi', self.pi)
             # print('self.pi[X]', self.pi[0])
-            log_likelihood = LogDensityVeci + torch.log(Variable(torch.FloatTensor([1/settings.support])))
+            log_likelihood = LogDensityVeci + torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype)))
             # log_densities = torch.squeeze(torch.log(torch.div(torch.stack(numerators), denominator)))
             # print('log_likelihood',log_likelihood)
-            return log_likelihood.data.numpy()
+            return log_likelihood.data.cpu().numpy()
 
         posterior_samples = np.zeros(n_samples)
 

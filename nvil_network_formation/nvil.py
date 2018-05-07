@@ -2,14 +2,25 @@
 
 import numpy as np
 import pickle, settings
+
+if not settings.show_fig:
+    import matplotlib
+    matplotlib.use('Agg')
+
 import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.autograd import Variable
 from dataset import NetworkIterator
 from matplotlib import pyplot as plt
 
+USE_CUDA = torch.cuda.is_available()
+dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+class Variable(torch.autograd.Variable):
+    def __init__(self, data, *args, **kwargs):
+        if USE_CUDA:
+            data = data.cuda()
+        super(Variable, self).__init__(data, *args, **kwargs)
 
 class Estimator():
     def __init__(self, rec_model, gen_model, n_samples=5, n_posterior_samples=10,
@@ -131,8 +142,8 @@ class bias_correction_RNN(nn.Module):
         return output[-1]
 
     def initHidden(self):
-        return (Variable(torch.zeros(self.num_layers, 1, self.hidden_size)),
-                Variable(torch.zeros(self.num_layers, 1, self.hidden_size)))
+        return (Variable(torch.zeros(self.num_layers, 1, self.hidden_size).type(dtype)),
+                Variable(torch.zeros(self.num_layers, 1, self.hidden_size).type(dtype)))
 
     def getSampleOutput(self, torchSample):
         hidden0 = self.initHidden()
@@ -141,7 +152,7 @@ class bias_correction_RNN(nn.Module):
             feature = torchSample[1]
         else:
             feature = torchSample
-        output = self.__call__(Variable(feature), hidden0)
+        output = self.__call__(Variable(torch.from_numpy(np.asarray(feature)).type(dtype)), hidden0)
 
         return output
 
@@ -169,18 +180,18 @@ class NVIL():
             self.alpha = opt_params['alpha']
         else:
             # instantiate our prior & recognition models
-            self.recognition_model = REC_MODEL(self.number_of_classes)
+            self.recognition_model = REC_MODEL(self.number_of_classes).type(dtype)
             # print(gen_params)
             self.generative_model = GEN_MODEL(gen_params)
 
             # NVIL Bias-correction network
             self.bias_correction = bias_correction_RNN(input_size = settings.number_of_features, hidden_size = settings.n_hidden,
-                     num_layers = settings.NUM_LAYERS, output_size = 1)
+                     num_layers = settings.NUM_LAYERS, output_size = 1).type(dtype)
  
             # Set NVIL params
-            self.c = torch.FloatTensor([opt_params['c0']])
-            self.v = torch.FloatTensor([opt_params['v0']])
-            self.alpha = torch.FloatTensor([opt_params['alpha']])
+            self.c = torch.from_numpy(np.asarray([opt_params['c0']])).type(dtype)
+            self.v = torch.from_numpy(np.asarray([opt_params['v0']])).type(dtype)
+            self.alpha = torch.from_numpy(np.asarray([opt_params['alpha']])).type(dtype)
 
         # ADAM defaults
         self.learning_rate = learning_rate
@@ -252,7 +263,7 @@ class NVIL():
         # print('loss_q:',loss_q)
         loss_C = C_out[0]
         for i in range(n):
-            if torch.sqrt(self.v).numpy()[0] > 1.0:
+            if torch.sqrt(self.v).cpu().numpy()[0] > 1.0:
                 lii = (l[i].data - self.c) / torch.sqrt(self.v)
                 # print('l[i].data000', l[i].data)
                 # print('self.c000', self.c)
@@ -263,7 +274,8 @@ class NVIL():
                 # print('l[i].data111',l[i].data)
                 # print('self.c111',self.c)
                 # print('lii111:', lii)
-            lii = Variable(torch.FloatTensor(lii), requires_grad=False)
+            if USE_CUDA: lii = lii.cuda()
+            lii = Variable(lii, requires_grad=False)
 
             if i == 0:
                 loss_q = loss_q * lii * -1
@@ -328,7 +340,7 @@ class NVIL():
                     cx = self.c
                     vx = self.v
                     print('(c, v, L): (%f, %f, %f)' % (np.asarray(cx), np.asarray(vx), L))
-                avg_costs.append(L.data.numpy())
+                avg_costs.append(L.data.cpu().numpy())
                 batch_counter += 1
             epoch += 1
         if save:

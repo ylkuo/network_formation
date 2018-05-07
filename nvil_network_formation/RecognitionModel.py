@@ -1,9 +1,16 @@
 import torch
 import settings
 import torch.nn as nn
-from torch.autograd import Variable
 import numpy as np
 import math
+
+USE_CUDA = torch.cuda.is_available()
+dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+class Variable(torch.autograd.Variable):
+    def __init__(self, data, *args, **kwargs):
+        if USE_CUDA:
+            data = data.cuda()
+        super(Variable, self).__init__(data, *args, **kwargs)
 
 class recognition_RNN(nn.Module):
     def __init__(self, input_size = settings.number_of_features, hidden_size = settings.n_hidden,
@@ -35,8 +42,8 @@ class recognition_RNN(nn.Module):
         return output
 
     def initHidden(self):
-        return (Variable(torch.zeros(self.num_layers, 1, self.hidden_size)),
-                Variable(torch.zeros(self.num_layers, 1, self.hidden_size)))
+        return (Variable(torch.zeros(self.num_layers, 1, self.hidden_size).type(dtype)),
+                Variable(torch.zeros(self.num_layers, 1, self.hidden_size).type(dtype)))
 
     def getSamplePrediction(self,torchSample):
         hidden0 = self.initHidden()
@@ -45,7 +52,7 @@ class recognition_RNN(nn.Module):
             feature = torchSample[1]
         else:
             feature = torchSample
-        output_label = self.__call__(Variable(feature), hidden0)
+        output_label = self.__call__(Variable(torch.from_numpy(np.asarray(feature)).type(dtype)), hidden0)
         _, prediction = torch.topk(output_label, 1)
         return prediction.data[0][0], np.exp(output_label.data[0][prediction.data[0][0]])
 
@@ -56,7 +63,7 @@ class recognition_RNN(nn.Module):
             feature = torchSample[1]
         else:
             feature = torchSample
-        output = self.__call__(Variable(feature), hidden0)
+        output = self.__call__(Variable(torch.from_numpy(np.asarray(feature)).type(dtype)), hidden0)
 
         return output
 
@@ -111,7 +118,7 @@ class NetworkFormationRecognition(recognition_RNN):
             # print(theta_vals)
         # print(Variable(torch.FloatTensor(theta_vals)))
         # print(Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0)))
-        return Variable(torch.FloatTensor(theta_vals)) #Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
+        return Variable(torch.from_numpy(theta_vals).type(dtype)) #Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
 
     def normal_pdf(self, value, mean=0, std=1):
         # print(value.type(torch.FloatTensor))
