@@ -73,5 +73,5 @@ if __name__ == '__main__':
         plt.xlabel('iteration')
         plt.ylabel('ELBO\n(averaged over minibatch)')
         if settings.show_fig: plt.show()
-        if settings.save_fig: fig.save(save_model_path + 'elbo.png')
+        if settings.save_fig: fig.savefig(settings.save_model_path + 'elbo.png')
 

@@ -93,7 +93,7 @@ class Estimator():
                 plt.xlabel('true theta')
                 plt.ylabel(self.estimator_type)
                 if settings.show_fig: plt.show()
-                if settings.save_fig: fig.save(save_model_path + 'posterior.png')
+                if settings.save_fig: fig.savefig(save_model_path + 'posterior.png')
             else: # not symmetric
                 lower_errors = []
                 upper_errors = []
@@ -108,7 +108,7 @@ class Estimator():
                 plt.xlabel('true theta')
                 plt.ylabel(self.estimator_type)
                 if settings.show_fig: plt.show()
-                if settings.save_fig: fig.save(save_model_path + 'posterior.png')
+                if settings.save_fig: fig.savefig(settings.save_model_path + 'posterior.png')
 
 
 class bias_correction_RNN(nn.Module):
