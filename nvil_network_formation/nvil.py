@@ -76,12 +76,13 @@ class Estimator():
                 print('true theta:', true_theta,'theta estimates:', theta_estimates)
         if do_plot:
             if symmetric:
-                plt.figure()
+                fig = plt.figure()
                 plt.errorbar(true_thetas, mean_estimated_thetas, yerr=errors)
                 plt.title(self.estimator_type + 'performance')
                 plt.xlabel('true theta')
                 plt.ylabel(self.estimator_type)
-                plt.show()
+                if settings.show_fig: plt.show()
+                if settings.save_fig: fig.save(save_model_path + 'posterior.png')
             else: # not symmetric
                 lower_errors = []
                 upper_errors = []
@@ -90,12 +91,13 @@ class Estimator():
                     lower_errors += [abs(np.min(theta_estimates) - true_thetas[i])]
                     upper_errors += [abs(np.max(theta_estimates) - - true_thetas[i])]
                 asymmetric_errors = [lower_errors, upper_errors]
-                plt.figure()
+                fig = plt.figure()
                 plt.errorbar(true_thetas, mean_estimated_thetas, yerr=asymmetric_errors)
                 plt.title(self.estimator_type + ' performance ')
                 plt.xlabel('true theta')
                 plt.ylabel(self.estimator_type)
-                plt.show()
+                if settings.show_fig: plt.show()
+                if settings.save_fig: fig.save(save_model_path + 'posterior.png')
 
 
 class bias_correction_RNN(nn.Module):

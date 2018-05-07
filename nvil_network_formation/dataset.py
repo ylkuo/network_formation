@@ -11,8 +11,8 @@ class NetworkDataset(object):
         [xsamp, ysamp] = self.network_formation.sampleXY(N)
         self.xsamp = xsamp
         self.ysamp = ysamp
-        print('ysamp',ysamp)
-        print('xsamp',xsamp)
+        #print('ysamp',ysamp)
+        #print('xsamp',xsamp)
 
     def get_dim(self):
         self.xdim = settings.number_of_classes
