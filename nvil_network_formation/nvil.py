@@ -16,11 +16,14 @@ from matplotlib import pyplot as plt
 
 USE_CUDA = torch.cuda.is_available()
 dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+
+
 class Variable(torch.autograd.Variable):
     def __init__(self, data, *args, **kwargs):
         if USE_CUDA:
             data = data.cuda()
         super(Variable, self).__init__(data, *args, **kwargs)
+
 
 class Estimator():
     def __init__(self, rec_model, gen_model, n_samples=5, n_posterior_samples=10,
@@ -82,7 +85,8 @@ class Estimator():
             theta_error, theta_estimates = self.get_estimates(true_theta, do_hist=do_hist)
             estimated_thetas += [theta_estimates]
             mean_estimated_thetas += [np.mean(theta_estimates)]
-            errors += [theta_error]
+            errors += [np.max(np.abs(theta_estimates - mean_estimated_thetas))]
+            # TODO: need correction errors should be computed with respect to mean_estimated_thetas not true theta
             if verbose:
                 print('true theta:', true_theta,'theta estimates:', theta_estimates)
         if do_plot:
@@ -99,8 +103,8 @@ class Estimator():
                 upper_errors = []
                 for i in range(len(true_thetas)):
                     theta_estimates = estimated_thetas[i]
-                    lower_errors += [abs(np.min(theta_estimates) - true_thetas[i])]
-                    upper_errors += [abs(np.max(theta_estimates) - - true_thetas[i])]
+                    lower_errors += [abs(np.min(theta_estimates) - mean_estimated_thetas[i])]
+                    upper_errors += [abs(np.max(theta_estimates) - mean_estimated_thetas[i])]
                 asymmetric_errors = [lower_errors, upper_errors]
                 fig = plt.figure()
                 plt.errorbar(true_thetas, mean_estimated_thetas, yerr=asymmetric_errors)
