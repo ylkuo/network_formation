@@ -85,8 +85,12 @@ class Estimator():
             theta_error, theta_estimates = self.get_estimates(true_theta, do_hist=do_hist)
             estimated_thetas += [theta_estimates]
             mean_estimated_thetas += [np.mean(theta_estimates)]
-            errors += [np.max(np.abs(theta_estimates - mean_estimated_thetas))]
-            # TODO: need correction errors should be computed with respect to mean_estimated_thetas not true theta
+            # print(mean_estimated_thetas[-1])
+            # print(theta_estimates)
+            # print(np.abs(theta_estimates - mean_estimated_thetas[-1]))
+            # print(np.max(np.abs(theta_estimates - mean_estimated_thetas[-1])))
+            errors += [np.max(np.abs(theta_estimates - mean_estimated_thetas[-1]))]
+
             if verbose:
                 print('true theta:', true_theta,'theta estimates:', theta_estimates)
         if do_plot:
@@ -97,7 +101,7 @@ class Estimator():
                 plt.xlabel('true theta')
                 plt.ylabel(self.estimator_type)
                 if settings.show_fig: plt.show()
-                if settings.save_fig: fig.savefig(save_model_path + 'posterior.png')
+                if settings.save_fig: fig.savefig(settings.save_model_path + 'posterior.png')
             else: # not symmetric
                 lower_errors = []
                 upper_errors = []

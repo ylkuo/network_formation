@@ -21,7 +21,7 @@ class NetworkDataset(object):
     def get_avg_length_time_series(self):
         sum_of_time_series_lengths = 0
         for i in range(self.len):
-            print(len(self.ysamp[i]['network']))
+            # print(len(self.ysamp[i]['network']))
             sum_of_time_series_lengths += len(self.ysamp[i]['network'])
         return sum_of_time_series_lengths/self.len
 

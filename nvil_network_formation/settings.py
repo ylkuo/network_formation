@@ -38,7 +38,7 @@ class_values = [2, 4, 6]  # list(range(number_of_classes))
 
 support = class_values[-1] - class_values[0] + 2
 
-use_exact_posterior = False
+use_exact_posterior = True
 
 load_model = True
 load_model_path = './data/model_2000/'
@@ -47,4 +47,4 @@ save_model_path = './data/model_3000/'
 is_train = True
 
 save_fig = True
-show_fig = False
+show_fig = True
