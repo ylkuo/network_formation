@@ -17,8 +17,8 @@ from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=1000)
-    print(dataset.get_avg_length_time_series())
+    dataset = NetworkDataset(N=2)
+    # print(dataset.get_avg_length_time_series())
     # exit(0)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
@@ -57,13 +57,13 @@ if __name__ == '__main__':
     estimator = Estimator(model.recognition_model,
                           model.generative_model,
                           n_samples=4,
-                          n_posterior_samples=100,
+                          n_posterior_samples=2,
                           estimator_type='MAP',
                           bin_size=15,
                           which_posterior=posterior_type,
                           error_type='MAE')
     estimator.get_estimates_for_true_thetas(true_thetas, do_plot=True,
-                                            symmetric=False, do_hist=False)
+                                            symmetric=True, do_hist=False)
 
     if settings.is_train:
         # plot ELBO
