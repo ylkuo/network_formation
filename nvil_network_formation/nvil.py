@@ -177,6 +177,7 @@ class NVIL():
                  bias_model=None):
 
         self.number_of_classes = number_of_classes
+        self.losses = []
 
         #---------------------------------------------------------
         if use_load_model:
@@ -308,7 +309,8 @@ class NVIL():
         torch.save(self.generative_model, model_path + 'gen.model')
         torch.save(self.bias_correction, model_path + 'bias.model')
         params = {'c': self.c, 'v': self.v, 'alpha': self.alpha,
-                  'lr': self.learning_rate, 'num_classes': self.number_of_classes}
+                  'lr': self.learning_rate, 'num_classes': self.number_of_classes,
+                  'losses': self.losses}
         pickle.dump(params, open(model_path + 'params.pkl', 'wb'))
 
     @staticmethod
@@ -317,7 +319,7 @@ class NVIL():
         gen_model = torch.load(model_path + 'gen.model')
         bias_model = torch.load(model_path + 'bias.model')
         param = pickle.load(open(model_path + 'params.pkl', 'rb'))
-        return NVIL(opt_params={'c0': param['c'], 'v0': param['v'], 'alpha': param['alpha']},
+        nvil = NVIL(opt_params={'c0': param['c'], 'v0': param['v'], 'alpha': param['alpha']},
                     gen_params=None,
                     GEN_MODEL=gen_model,
                     REC_MODEL=rec_model,
@@ -325,10 +327,11 @@ class NVIL():
                     learning_rate=param['lr'],
                     use_load_model=True,
                     bias_model=bias_model)
+        nvil.losses = params['losses']
+        return nvil
 
 
     def fit(self, dataset, batch_size=1, n=10, max_epochs=100, save=False):
-        avg_costs = []
         epoch = 0
         while epoch < max_epochs:
             data_loader = NetworkIterator(dataset, batch_size=batch_size)
@@ -348,9 +351,9 @@ class NVIL():
                     cx = self.c
                     vx = self.v
                     print('(c, v, L): (%f, %f, %f)' % (np.asarray(cx), np.asarray(vx), L))
-                avg_costs.append(L.data.cpu().numpy())
+                self.losses.append(L.data.cpu().numpy())
                 batch_counter += 1
             epoch += 1
         if save:
             self.save_model()
-        return avg_costs
+        return self.losses
