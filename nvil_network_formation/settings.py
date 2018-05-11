@@ -5,6 +5,11 @@
 # The generative model settings
 
 import networkx as NX
+import random as RD
+import numpy as np
+
+RD.seed(0)
+np.random.seed(0)
 
 gen_model_params = dict()
 
@@ -24,7 +29,7 @@ gen_model_params['feature_length'] = gen_model_params['size']
 
 # The inference engine settings
 
-n_hidden = 4  # number of units in each layer of the recurrent unit
+n_hidden = 32  # number of units in each layer of the recurrent unit
 
 NUM_LAYERS = 2  # number of layers in each recurrent unit
 

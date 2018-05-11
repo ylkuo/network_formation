@@ -19,9 +19,6 @@ class Variable(torch.autograd.Variable):
             data = data.cuda()
         super(Variable, self).__init__(data, *args, **kwargs)
 
-RD.seed()
-np.random.seed()
-
 SENTINEL = object()
 
 class NetworkModel:
