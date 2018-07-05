@@ -2,14 +2,15 @@ import matplotlib
 matplotlib.use('TkAgg')
 
 import networkx as nx
+import numpy as np
 import pylab
+import pycxsimulator
 import sqlite3
 
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
 from dateutil import relativedelta
-import pycxsimulator
 from operator import itemgetter
 from time import mktime, strftime, strptime
 
@@ -61,6 +62,11 @@ class CrunchbaseData(object):
     def _get_data_from_table(self, table_name, field):
         cursor = self.conn.cursor()
         results = cursor.execute('SELECT ' + field + ' FROM ' + table_name)
+        return results.fetchall()
+
+    def _get_top_countries(self, num_countries=5):
+        cursor = self.conn.cursor()
+        results = cursor.execute('SELECT COUNT(investor_country_code), investor_country_code FROM investments WHERE investor_country_code <> \'\' GROUP BY investor_country_code ORDER BY COUNT(investor_country_code) DESC LIMIT ' + str(num_countries))
         return results.fetchall()
 
     def get_investment_network(self):
@@ -200,6 +206,23 @@ class CrunchbaseData(object):
             top_coinvestor.extend(coinvestors)
         return top_coinvestor
 
+    def sample_investor_by_country(self, in_network, num_investors=10, countries=['USA']):
+        all_investors = {}
+        investor_list = []
+        for country in countries:
+            subgraph = in_network.subgraph([n for n, attrdict in in_network.node.items() \
+                if attrdict['location']['country'] == country])
+            nodes = []
+            weights = []
+            for node, degree in subgraph.degree(subgraph.nodes):
+                nodes.append(node)
+                weights.append(degree)
+            weights = np.asarray(weights)
+            weights = weights / float(np.sum(weights))
+            all_investors[country] = list(np.random.choice(nodes, size=num_investors, replace=False, p=weights))
+            investor_list.extend(all_investors[country])
+        return all_investors, investor_list
+
     def generate_time_series_sliding_window(self, in_network, origin='1988-01-01', start='2008-01-01',
                                             end='2015-12-31', min_coinvest=3, window_day=30,
                                             filter_by_nodes=None):
@@ -227,7 +250,7 @@ class CrunchbaseData(object):
         start_time = datetime.strptime(start, '%Y-%m-%d')
         end_time = datetime.strptime(end, '%Y-%m-%d')
         for investment in investments_by_time:
-            #print('new: ', investment)
+            print('new: ', investment)
             while len(investment_in_window) > 0 and \
                 abs((investment[4] - investment_in_window[0][4]).days) > window_day:
                 #print('delete: ', investment_in_window[0])
@@ -251,8 +274,12 @@ class CrunchbaseData(object):
                 prev_network.add_edges_from([(i1, i2)])
         return time_series
 
+
+TIME_SERIES_TYPE = 1 # 0: top investors, 1: sample investors by country
+
 if __name__ == '__main__':
     cb_data = CrunchbaseData('data/crunchbase_2015.db')
+    # construct network
     invest_network, categories = cb_data.get_investment_network()
     coinvest_network = cb_data.convert_to_coinvest_network(invest_network)
     # get top co-investors
@@ -261,28 +288,47 @@ if __name__ == '__main__':
     # get top investors
     print(sorted(invest_network.out_degree(invest_network.nodes),
                  key=itemgetter(1), reverse=True)[:20])
-    # get time series for top coinvestors
-    top_coinvestor = cb_data.get_top_coinvestor_by_country(coinvest_network, num_investors=10, countries=['USA', 'CHN'])
-    top_coinvestor = [inv[0] for inv in top_coinvestor]
-    # Great recession: start='2007-12-01', end='2009-06-30'
-    # All: start='1988-01-01', end='2015-12-31'
-    time_series_sliding = \
-        cb_data.generate_time_series_sliding_window(coinvest_network, \
-            origin='1988-01-01', start='2010-01-01', end='2015-12-31',
-            min_coinvest=1, window_day=31, filter_by_nodes=top_coinvestor)
-    pickle.dump(time_series_sliding, open('./data/' + 'observed_time_series_sliding_31day_recent_2011_2015_min1.pkl', 'wb'))
-    #time_series = cb_data.generate_time_series(coinvest_network, 2, 1,
-    #                                           top_coinvestor)
-    #print(len(time_series))
 
-    #pickle.dump(time_series, open('./data/' + 'observed_time_series.pkl', 'wb'))
+    global time_networks
+    if TIME_SERIES_TYPE == 0:
+        # get time series for top coinvestors
+        top_coinvestor = cb_data.get_top_coinvestor_by_country(coinvest_network, num_investors=10, countries=['USA'])
+        top_coinvestor = [inv[0] for inv in top_coinvestor]
+        # Great recession: start='2007-12-01', end='2009-06-30'
+        # All: start='1988-01-01', end='2015-12-31'
+        time_series_sliding = \
+            cb_data.generate_time_series_sliding_window(coinvest_network, \
+                origin='1988-01-01', start='2010-01-01', end='2015-12-31',
+                min_coinvest=1, window_day=31, filter_by_nodes=top_coinvestor)
+        pickle.dump(time_series_sliding, open('./data/' + 'observed_time_series_sliding_31day_recent_2011_2015_min1.pkl', 'wb'))
+        time_networks = time_series_sliding
+    elif TIME_SERIES_TYPE == 1:
+        # get top 10 countries
+        top_countries = cb_data._get_top_countries(num_countries=5)
+        for count, country in top_countries:
+            print(country, count)
+        countries = [country for count, country in top_countries]
+        # sample investors from each country
+        investors_dict, investors = cb_data.sample_investor_by_country(coinvest_network, num_investors=10, countries=countries)
+        #investors = cb_data.get_top_coinvestor_by_country(coinvest_network, num_investors=10, countries=countries)
+        #investors = [inv[0] for inv in investors]
+        # Dot-com bubble: start='1997-01-01', end='2000-12-31'
+        ts1 = cb_data.generate_time_series_sliding_window(coinvest_network, \
+            origin='1996-01-01', start='1997-01-01', end='2000-12-31',
+            min_coinvest=1, window_day=31, filter_by_nodes=investors)
+        # post dot-com bubble?
+        ts2 = cb_data.generate_time_series_sliding_window(coinvest_network, \
+            origin='1996-01-01', start='2002-01-01', end='2005-12-31',
+            min_coinvest=1, window_day=31, filter_by_nodes=investors)
+        pickle.dump(ts1, open('./data/' + 'observed_time_series_dotcom.pkl', 'wb'))
+        pickle.dump(ts2, open('./data/' + 'observed_time_series_post_dotcom.pkl', 'wb'))
+        time_networks = ts2
+
     # get top categories
     top_categories = sorted(categories.items(), key=itemgetter(1), reverse=True)[:100]
     top_categories = [cat for cat, _ in top_categories]
     print(top_categories)
     pickle.dump(top_categories, open('./data/' + 'top_categories.pkl', 'wb'))
     # visualize time series
-    global time_networks
-    time_networks = time_series_sliding
     pycxsimulator.GUI().start(func=[init_viz, draw, step_viz])
 
