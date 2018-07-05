@@ -101,23 +101,25 @@ class NetworkFormationRecognition(recognition_RNN):
         # print('pi in recognition', pi)
         x_vals = np.zeros([pi.shape[0], self.number_of_classes])
         theta_vals = np.zeros([pi.shape[0]])
+        mean_of_gaussain = 0
         for ii in range(pi.shape[0]):
             # print(pi[ii])
-            # print(np.random.multinomial(1, pi[ii], size=1))
+
             x_vals[ii,:] = np.random.multinomial(1, pi[ii], size=1)
-            # print('x_vals[ii,:] in recognition: ' , x_vals[ii,:])
-            # b_val = x_vals[ii,:]
-            # print('b_vals:', b_vals)
+
+            for jj in range(len(pi[ii])):
+                mean_of_gaussain += settings.class_values[jj]*pi[ii][jj]
+                # print(mean_of_gaussain)
+
             class_label = x_vals[ii,:].nonzero()[0][0]  # the index of the chosen class
-            # print('class_label:', class_label)
-            mean_of_gaussain = settings.class_values[class_label]
-            theta_vals[ii] = np.random.normal(mean_of_gaussain, 1)
-            # print('theta_vals[ii]', theta_vals[ii])
+
+            # mean_of_gaussain = settings.class_values[class_label]
+            # theta_vals[ii] = np.random.normal(mean_of_gaussain, 1)
+            theta_vals[ii] = mean_of_gaussain
+
             if theta_vals[ii] < 0:
                 theta_vals[ii] = 0
-            # print(theta_vals)
-        # print(Variable(torch.FloatTensor(theta_vals)))
-        # print(Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0)))
+
         return Variable(torch.from_numpy(theta_vals).type(dtype)) #Variable(torch.FloatTensor(x_vals.astype(bool) * 1.0))
 
     def normal_pdf(self, value, mean=0, std=1):
