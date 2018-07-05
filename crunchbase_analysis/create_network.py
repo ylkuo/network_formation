@@ -250,7 +250,7 @@ class CrunchbaseData(object):
         start_time = datetime.strptime(start, '%Y-%m-%d')
         end_time = datetime.strptime(end, '%Y-%m-%d')
         for investment in investments_by_time:
-            print('new: ', investment)
+            #print('new: ', investment)
             while len(investment_in_window) > 0 and \
                 abs((investment[4] - investment_in_window[0][4]).days) > window_day:
                 #print('delete: ', investment_in_window[0])
@@ -304,7 +304,7 @@ if __name__ == '__main__':
         time_networks = time_series_sliding
     elif TIME_SERIES_TYPE == 1:
         # get top 10 countries
-        top_countries = cb_data._get_top_countries(num_countries=5)
+        top_countries = cb_data._get_top_countries(num_countries=10)
         for count, country in top_countries:
             print(country, count)
         countries = [country for count, country in top_countries]
