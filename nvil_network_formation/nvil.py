@@ -256,7 +256,6 @@ class NVIL():
         batch_size = len(Y)
         q_hgys = []
         p_yhs = []
-        C_outs = []
         for i in range(batch_size):
             for j in range(n):
                 theta_samp = self.recognition_model.getSample(Y[i])
@@ -269,30 +268,15 @@ class NVIL():
                 p_yh = self.generative_model.evaluateLogDensity(theta_samp, Y[i])
 
 
-                hidden0 = self.bias_correction.initHidden()
-                input_degrees = Y[i]['degrees'].unsqueeze(0)
-                input_degrees = input_degrees.permute(1, 0, 2)
-                # print('input_degrees in bias correction',input_degrees)
-                C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
                 q_hgys.append(q_hgy)
                 p_yhs.append(p_yh)
-                C_outs.append(C_out)
+
         p_yh = torch.stack(p_yhs)
         q_hgy = torch.stack(q_hgys)
-        C_out = torch.stack(C_outs)
-        # C_out = 0
-        # print('C_out',C_out)
-        L = p_yh.mean() - q_hgy.mean()
-        # print('L',L)
-        # print('q_hgy', q_hgy)
-        # print('p_yh', p_yh)
-        l = p_yh - q_hgy - C_out
-        # print('p_yh',p_yh)
-        # print('q_hgy',q_hgy)
-        # print('C_out',C_out)
-        # print('L', L)
-        # print('l',l)
-        return [L, l, p_yh, q_hgy, C_out]
+
+        L = p_yh.mean() - q_hgy.mean() # this is the ELBO
+
+        return [L, p_yh, q_hgy]
 
     def update_cv(self, l):
         # Now compute derived quantities for the update
@@ -306,7 +290,7 @@ class NVIL():
         # print('self.c after', self.c)
         # print('self.v after', self.v)
 
-    def update_params(self, n, l, p_yh, q_hgy, C_out):
+    def update_params_NVIL(self, n, l, p_yh, q_hgy, C_out):
         self.opt.zero_grad()
         # print('l',l)
         # print('q_hgy:',q_hgy)
@@ -350,6 +334,30 @@ class NVIL():
         self.opt.step()
         # self.generative_model.update_pi()
 
+    def update_params_ELBO(self, n, p_yh, q_hgy):
+        self.opt.zero_grad()
+
+        # print('q_hgy:',q_hgy)
+        loss_q = q_hgy[0]
+        loss_p = p_yh[0]
+        # print('loss_q:',loss_q)
+
+        for i in range(n):
+            if i == 0:
+                loss_p = p_yh[0]
+                loss_q = q_hgy[0]
+            else:
+                loss_p = loss_p + p_yh[i]
+                loss_q = loss_q + q_hgy[i]
+                # print('loss_p:',loss_p)
+        loss_q = loss_q / n
+        loss_p /= n
+        loss = loss_q - loss_p # this is the negative of ELBO. It should be minimized.
+        # print('loss_q3:',loss_q)
+        loss.backward(retain_graph=True)
+        self.opt.step()
+        # self.generative_model.update_pi()
+
     def save_model(self):
         model_path = settings.save_model_path
         torch.save(self.recognition_model, model_path + 'rec.model')
@@ -390,14 +398,22 @@ class NVIL():
                 #print('data_y', data_y)
                 #hsamp_np = self.recognition_model.getSample(data_y)
                 # print('hsamp_np',hsamp_np)
-                L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, n)
-                self.update_cv(l)
-                #print('data_y fed into update_params',data_y)
-                self.update_params(n, l, p_yh, q_hgy, C_out)# data_y.shape[0] for batch_size
+                if not settings.use_ELBO_cost:
+                    L, l, p_yh, q_hgy, C_out = self.get_nvil_cost(data_y, n)
+                    self.update_cv(l)
+                    #print('data_y fed into update_params',data_y)
+                    self.update_params_NVIL(n, l, p_yh, q_hgy, C_out)# data_y.shape[0] for batch_size
+                elif settings.use_ELBO_cost:
+                    L, p_yh, q_hgy = self.get_ELBO_cost(data_y, n)
+                    self.update_params_ELBO(n, p_yh, q_hgy)  # data_y.shape[0] for batch_size
+
                 if np.mod(batch_counter, 10) == 0:
-                    cx = self.c
-                    vx = self.v
-                    print('(c, v, L): (%f, %f, %f)' % (np.asarray(cx), np.asarray(vx), L))
+                    if not settings.use_ELBO_cost:
+                        cx = self.c
+                        vx = self.v
+                        print('(c, v, L): (%f, %f, %f)' % (np.asarray(cx), np.asarray(vx), L))
+                    elif settings.use_ELBO_cost:
+                        print('(L): (%f)' % (L))
                 self.losses.append(L.data.cpu().numpy())
                 batch_counter += 1
             epoch += 1

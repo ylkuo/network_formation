@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=200)
+    dataset = NetworkDataset(N=500)
     # print(dataset.get_avg_length_time_series())
     # exit(0)
 
