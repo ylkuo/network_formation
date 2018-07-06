@@ -49,6 +49,8 @@ load_model = False
 load_model_path = './data/model_2000/'
 save_model_path = './data/model_3000/'
 
+use_ELBO_cost = False
+
 is_train = True
 
 save_fig = True

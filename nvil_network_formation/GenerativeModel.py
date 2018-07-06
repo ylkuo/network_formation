@@ -117,7 +117,8 @@ class NetworkModel:
         RD.shuffle(candidate_edges)
         self.pairwise_stable = True
         for candidate_edge in candidate_edges:
-            if self.successful_edge_formation(candidate_edge):
+            # print(self.successful_edge_formation(candidate_edge).data)
+            if self.successful_edge_formation(candidate_edge).data[0]:
                 self.params['network'].add_edge(*candidate_edge)
                 self.pairwise_stable = False
                 break
@@ -141,6 +142,11 @@ class UtilityModel(NetworkModel):
 
     def __init__(self, network_params):
         super(UtilityModel, self).__init__(network_params)
+        self.sparsity = \
+            Variable(torch.from_numpy(np.asarray([500 * np.sqrt(8 / self.params['size']) * 0.007]))).type(dtype)
+
+        self.relative_weight = \
+            Variable(torch.from_numpy(np.asarray([0.1]))).type(dtype)
 
     def set_utility_params(self, utility_params):
         r"""
@@ -165,8 +171,10 @@ class UtilityModel(NetworkModel):
 
         if 'theta_3' not in utility_params:
             self.params['theta_3'] = 5  # np.random.normal(0, 1)
-        if 'sparsity' not in utility_params:
-            self.params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
+
+        # if 'sparsity' not in utility_params:
+        #     self.params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
+
         # there should be better ways to set the parameters theta_0 and theta_3 (determining the sparsity) based on the
         # final edge density or something like that in the observed data.
 
@@ -177,16 +185,18 @@ class UtilityModel(NetworkModel):
         distance_investmnets = np.linalg.norm(self.params['network'].node[candidate_edge[0]]['position'][1:] - \
                                               self.params['network'].node[candidate_edge[1]]['position'][1:])
 
-        distance = 0.1 * distance_investmnets + distance_risk_attitudes
+        distance = self.relative_weight * float(distance_investmnets) + float(distance_risk_attitudes)
 
         list_common_neighbors = list(
             NX.common_neighbors(self.params['network'], candidate_edge[0], candidate_edge[1]))
         edge_value = self.params['theta_0'] + \
                      self.params['theta_2'] * (1.0 * (len(list_common_neighbors) > 0)) + \
                      self.potential_edge_attributes[candidate_edge] - \
-                     (1 / self.params['sparsity']) * distance
-
-        return edge_value > 0
+                     (1 / self.sparsity) * distance
+        # print(edge_value)
+        edge_value = np.reshape(edge_value, 1)[-1]
+        # print(edge_value.data)
+        return torch.gt(edge_value,0.0)
 
 
 class NetworkFormationGenerativeModel(UtilityModel):
@@ -204,7 +214,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
             self.prior_un = nn.Parameter(torch.from_numpy(np.asarray(GenerativeParams['prior'])).type(dtype), requires_grad=True)
         else:
             # self.prior_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(settings.number_of_classes))), requires_grad=True)
-            self.prior_un = nn.Parameter(torch.from_numpy(np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)).type(dtype), requires_grad=True)
+            self.prior_un = \
+                nn.Parameter(torch.from_numpy(np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)).type(dtype)
+                             , requires_grad=True)
             # what is the 100*??? should n't it be np.ones(xDim)
         self.prior = self.prior_un#/(settings.support)
         # print('self.pi in init NetFormationGenModel',self.pi)
@@ -277,7 +289,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         epsilon_upperbound = - self.params['theta_0'] - \
                              theta_2 * (1.0 * (len(list_common_neighbors) > 0)) + \
-                             (1 / self.params['sparsity']) * distance
+                             (1 / self.sparsity) * distance
 
         probability_non_edge = self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))
 
@@ -350,9 +362,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
                     product_term *= (1 / number_of_non_edges)
 
-            epsilon_upperbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance
+            epsilon_upperbound = - self.params['theta_0'] + (1 / self.sparsity) * distance
 
-            epsilon_upperbound = Variable(torch.from_numpy(np.asarray([epsilon_upperbound])).type(dtype))
+            # epsilon_upperbound = Variable(torch.from_numpy(np.asarray([epsilon_upperbound])).type(dtype),requires_grad =False)
 
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
 
@@ -382,7 +394,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     second_product_term *= (1 / number_of_non_edges)
 
 
-            epsilon_lowerbound = - self.params['theta_0'] + (1 / self.params['sparsity']) * distance - theta_2 * (1.0)
+            epsilon_lowerbound = - self.params['theta_0'] + (1 / self.sparsity) * distance - theta_2 * (1.0)
             # it has too many [[[[[]]]]]
 
             epsilon_lowerbound = np.reshape(epsilon_lowerbound, 1)[-1]  # taking epsilon_lowerbound out of [[[[[]]]]]
@@ -390,8 +402,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
             epsilon_lowerbound = torch.div(epsilon_lowerbound, self.params['theta_3'])
 
 
-            epsilon_upperbound = Variable(torch.from_numpy(np.asarray([- self.params['theta_0'] +
-                                                        (1 / self.params['sparsity']) * distance])).type(dtype))
+            # epsilon_upperbound = Variable(torch.from_numpy(np.asarray([- self.params['theta_0'] +
+            #                                             (1 / self.sparsity) * distance])).type(dtype),requires_grad=False)
+
+            epsilon_upperbound = - self.params['theta_0'] + (1 / self.sparsity) * distance
 
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
 
@@ -439,7 +453,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('X',X)
         # print('pi', self.pi)
         # print('self.pi[X]', self.pi[X])
-        log_density = (LogDensityVeci + torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype)))) #  #/total_edges # /total_edges X[count]
+        log_density = (LogDensityVeci + torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype),
+                                                           requires_grad=True))) #  #/total_edges # /total_edges X[count]
 
         # print('log_density',log_density)
         if math.isnan(log_density):
@@ -458,7 +473,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         @mc.stochastic(observed=True)
         def network_likelihood_model(value=data,infer_theta=infer_theta):
             # print('infer_theta:', infer_theta.tolist())
-            X = Variable(torch.from_numpy(np.asarray([infer_theta.tolist()])).type(dtype))
+            X = Variable(torch.from_numpy(np.asarray([infer_theta.tolist()])).type(dtype),requires_grad=False)
             # print('data:', data)
             # print('value:',value)
             network_time_series = data
@@ -478,7 +493,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # print('X',X)
             # print('self.pi', self.pi)
             # print('self.pi[X]', self.pi[0])
-            log_likelihood = LogDensityVeci + torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype)))
+            log_likelihood = LogDensityVeci + torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype)
+                                                                 ,requires_grad=False))
             # log_densities = torch.squeeze(torch.log(torch.div(torch.stack(numerators), denominator)))
             # print('log_likelihood',log_likelihood)
             return log_likelihood.data.cpu().numpy()

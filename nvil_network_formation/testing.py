@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=3000)
+    dataset = NetworkDataset(N=200)
     # print(dataset.get_avg_length_time_series())
     # exit(0)
 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
         model.generative_model.prior.data = torch.FloatTensor(km_pi)
 
         # fit the model
-        costs = model.fit(dataset, batch_size=20, max_epochs=1, save=True)
+        costs = model.fit(dataset, batch_size=20, max_epochs=2, save=True)
 
 
     true_thetas = [2,4,6]

@@ -252,6 +252,48 @@ class NVIL():
         # print('l',l)
         return [L, l, p_yh, q_hgy, C_out]
 
+    def get_ELBO_cost(self, Y, n):
+        batch_size = len(Y)
+        q_hgys = []
+        p_yhs = []
+        C_outs = []
+        for i in range(batch_size):
+            for j in range(n):
+                theta_samp = self.recognition_model.getSample(Y[i])
+                # First, compute L and l (as defined in Algorithm 1 in Gregor & ..., 2014)
+                # Evaluate the recognition model density Q_\phi(h_i | y_i)
+                # print('hsamp fed into recognition model eval log density',hsamp)
+                # print('Y fed into recognition model eval log density', Y)
+                q_hgy = self.recognition_model.evalLogDensity(theta_samp, Y[i])
+                # Evaluate the generative model density P_\theta(y_i , h_i)
+                p_yh = self.generative_model.evaluateLogDensity(theta_samp, Y[i])
+
+
+                hidden0 = self.bias_correction.initHidden()
+                input_degrees = Y[i]['degrees'].unsqueeze(0)
+                input_degrees = input_degrees.permute(1, 0, 2)
+                # print('input_degrees in bias correction',input_degrees)
+                C_out = torch.squeeze(self.bias_correction.__call__(Variable(input_degrees), hidden0))
+                q_hgys.append(q_hgy)
+                p_yhs.append(p_yh)
+                C_outs.append(C_out)
+        p_yh = torch.stack(p_yhs)
+        q_hgy = torch.stack(q_hgys)
+        C_out = torch.stack(C_outs)
+        # C_out = 0
+        # print('C_out',C_out)
+        L = p_yh.mean() - q_hgy.mean()
+        # print('L',L)
+        # print('q_hgy', q_hgy)
+        # print('p_yh', p_yh)
+        l = p_yh - q_hgy - C_out
+        # print('p_yh',p_yh)
+        # print('q_hgy',q_hgy)
+        # print('C_out',C_out)
+        # print('L', L)
+        # print('l',l)
+        return [L, l, p_yh, q_hgy, C_out]
+
     def update_cv(self, l):
         # Now compute derived quantities for the update
         # print(l)
@@ -269,6 +311,7 @@ class NVIL():
         # print('l',l)
         # print('q_hgy:',q_hgy)
         loss_q = q_hgy[0]
+        loss_p = p_yh[0]
         # print('loss_q:',loss_q)
         loss_C = C_out[0]
         for i in range(n):
@@ -287,19 +330,23 @@ class NVIL():
             lii = Variable(lii, requires_grad=False)
 
             if i == 0:
+                loss_p = p_yh[0] * -1.0
                 loss_q = loss_q * lii * -1
                 # print('loss_q1:',loss_q)
                 # print('lii2',lii)
                 loss_C = loss_C * lii * -1
             else:
+                loss_p += p_yh[i] * -1.0
                 loss_q += q_hgy[i] * lii * -1
-                # print('loss_q2:',loss_q)
+                # print('loss_p:',loss_p)
                 loss_C += C_out[i] * lii * -1
         loss_q = loss_q / n
         loss_C = loss_C / n
+        loss_p /= n
         # print('loss_q3:',loss_q)
         loss_q.backward(retain_graph=True)
         loss_C.backward(retain_graph=True)
+        loss_p.backward(retain_graph=True)
         self.opt.step()
         # self.generative_model.update_pi()
 
