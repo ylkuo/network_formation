@@ -14,7 +14,7 @@ class Variable(torch.autograd.Variable):
 
 class recognition_RNN(nn.Module):
     def __init__(self, input_size = settings.number_of_features, hidden_size = settings.n_hidden,
-                 num_layers = settings.NUM_LAYERS, output_size = settings.OUTPUT_SIZE,nCUnits = 4):
+                 num_layers = settings.NUM_LAYERS, output_size = settings.OUTPUT_SIZE, nCUnits = 4):
         super(recognition_RNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -151,9 +151,10 @@ class NetworkFormationRecognition(recognition_RNN):
 
 
         gaussian_probabilities = torch.squeeze(torch.stack(gaussian_probabilities))
-        # print('self.h:', self.h)
+        # print('self.h:', torch.squeeze(self.h))
         # print('gaussian_probabilities:',gaussian_probabilities)
-        total_probability = torch.squeeze(torch.dot(gaussian_probabilities,self.h))
+        # print('dot', torch.dot(gaussian_probabilities, torch.squeeze(self.h)))
+        total_probability = torch.squeeze(torch.dot(gaussian_probabilities, torch.squeeze(self.h)))
         # print('total_probability:',total_probability)
         # print(torch.log(total_probability))
         # print(torch.log(torch.sum(self.h*theta_samp, 1)))

@@ -235,7 +235,7 @@ class NVIL():
                 q_hgys.append(q_hgy)
                 p_yhs.append(p_yh)
                 C_outs.append(C_out)
-        p_yh = torch.stack(p_yhs)
+        p_yh = torch.squeeze(torch.stack(p_yhs))
         q_hgy = torch.stack(q_hgys)
         C_out = torch.stack(C_outs)
         # C_out = 0
@@ -330,9 +330,8 @@ class NVIL():
         # print('loss_q3:',loss_q)
         loss_q.backward(retain_graph=True)
         loss_C.backward(retain_graph=True)
-        loss_p.backward(retain_graph=True)
+        loss_p.backward()
         self.opt.step()
-        # self.generative_model.update_pi()
 
     def update_params_ELBO(self, n, p_yh, q_hgy):
         self.opt.zero_grad()
@@ -354,7 +353,7 @@ class NVIL():
         loss_p /= n
         loss = loss_q - loss_p # this is the negative of ELBO. It should be minimized.
         # print('loss_q3:',loss_q)
-        loss.backward(retain_graph=True)
+        loss.backward()
         self.opt.step()
         # self.generative_model.update_pi()
 

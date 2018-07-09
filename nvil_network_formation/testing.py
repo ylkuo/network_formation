@@ -41,9 +41,9 @@ if __name__ == '__main__':
                      NetworkFormationRecognition, xdim, learning_rate=3e-3)
 
     if settings.is_train:
-        km_pi = list(np.linspace((settings.class_values[0]-1),(settings.class_values[-1]+1),100))
+        km_pi = np.linspace((settings.class_values[0]-1), (settings.class_values[-1]+1), 100)
         print(km_pi)
-        model.generative_model.prior.data = torch.FloatTensor(km_pi)
+        model.generative_model.prior = km_pi
 
         # fit the model
         costs = model.fit(dataset, batch_size=20, max_epochs=2, save=True)

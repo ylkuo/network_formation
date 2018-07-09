@@ -8,6 +8,8 @@ import networkx as NX
 import torch.nn as nn
 import settings
 
+from torch.nn import functional as F
+
 if settings.use_exact_posterior:
     import pymc as mc
 
@@ -21,9 +23,10 @@ class Variable(torch.autograd.Variable):
 
 SENTINEL = object()
 
-class NetworkModel:
+class NetworkModel(nn.Module):
 
     def __init__(self, network_params):
+        super(NetworkModel, self).__init__()
         self.params = copy.deepcopy(network_params)
         self.fixed_network_params = copy.deepcopy(network_params)
         self.pairwise_stable = False
@@ -142,11 +145,11 @@ class UtilityModel(NetworkModel):
 
     def __init__(self, network_params):
         super(UtilityModel, self).__init__(network_params)
-        self.sparsity = \
-            Variable(torch.from_numpy(np.asarray([500 * np.sqrt(8 / self.params['size']) * 0.007]))).type(dtype)
+        self.sparsity = nn.Linear(1, 1)
+        #self.sparsity.data = torch.FloatTensor(np.asarray([500 * np.sqrt(8 / self.params['size']) * 0.007]))
 
-        self.relative_weight = \
-            Variable(torch.from_numpy(np.asarray([0.1]))).type(dtype)
+        self.relative_weight = nn.Linear(1, 1)
+        #self.relative_weight.data = torch.FloatTensor(np.asarray([0.1]))
 
     def set_utility_params(self, utility_params):
         r"""
@@ -179,24 +182,27 @@ class UtilityModel(NetworkModel):
         # final edge density or something like that in the observed data.
 
     def successful_edge_formation(self, candidate_edge):
+        #print('candidate_edge', candidate_edge)
         distance_risk_attitudes = np.linalg.norm(self.params['network'].node[candidate_edge[0]]['position'][0] - \
                                                  self.params['network'].node[candidate_edge[1]]['position'][0])
 
-        distance_investmnets = np.linalg.norm(self.params['network'].node[candidate_edge[0]]['position'][1:] - \
+        distance_investments = np.linalg.norm(self.params['network'].node[candidate_edge[0]]['position'][1:] - \
                                               self.params['network'].node[candidate_edge[1]]['position'][1:])
 
-        distance = self.relative_weight * float(distance_investmnets) + float(distance_risk_attitudes)
+        distance = F.relu(self.relative_weight(torch.tensor([float(distance_investments)]))) + float(distance_risk_attitudes)
 
         list_common_neighbors = list(
             NX.common_neighbors(self.params['network'], candidate_edge[0], candidate_edge[1]))
+        #print('potential_edge_attributes', self.potential_edge_attributes[candidate_edge])
+        #print('sparsity', self.sparsity.detach().numpy())
         edge_value = self.params['theta_0'] + \
                      self.params['theta_2'] * (1.0 * (len(list_common_neighbors) > 0)) + \
                      self.potential_edge_attributes[candidate_edge] - \
-                     (1 / self.sparsity) * distance
+                     1. / (F.relu(self.sparsity(distance)).detach().numpy() + 0.1)
         # print(edge_value)
         edge_value = np.reshape(edge_value, 1)[-1]
         # print(edge_value.data)
-        return torch.gt(edge_value,0.0)
+        return edge_value > 0.0
 
 
 class NetworkFormationGenerativeModel(UtilityModel):
@@ -210,13 +216,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # Mixture distribution
         # print('GenerativeParams', GenerativeParams)
         if 'prior' in GenerativeParams:
-
-            self.prior_un = nn.Parameter(torch.from_numpy(np.asarray(GenerativeParams['prior'])).type(dtype), requires_grad=True)
+            self.prior_un = np.asarray(GenerativeParams['prior'])
         else:
             # self.prior_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(settings.number_of_classes))), requires_grad=True)
-            self.prior_un = \
-                nn.Parameter(torch.from_numpy(np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)).type(dtype)
-                             , requires_grad=True)
+            self.prior_un = np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)
             # what is the 100*??? should n't it be np.ones(xDim)
         self.prior = self.prior_un#/(settings.support)
         # print('self.pi in init NetFormationGenModel',self.pi)
@@ -232,7 +235,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         return copy.deepcopy(dummy1), copy.copy(dummy2)
 
     def sampleXY(self, _N):
-        _prior = np.asarray(self.prior.data)
+        _prior = self.prior
         # b_vals = np.random.multinomial(1, _prior, size=_N) # a binary vector of all zero entry except one (the chosen class)
         # x_vals = b_vals.nonzero()[1] # the index of the chosen class
         #
@@ -256,18 +259,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('y_vals:', y_vals)
         return [theta_vals, y_vals]
 
-    def parameters(self):
-        params_list = [self.prior_un]
-        for params in params_list:
-            yield params
-
-    def update_pi(self):
-
-        self.prior = self.prior
-
     def normal_cdf(self, value):
         z = torch.div(value, math.sqrt(2))
-
         return 0.5 * (1 + torch.erf(z.type(dtype)))
 
     def non_edge_probability(self, non_edge, lastnetwork, theta_2):
@@ -284,12 +277,12 @@ class NetworkFormationGenerativeModel(UtilityModel):
         distance_investments = np.linalg.norm(lastnetwork.node[non_edge[0]]['position'][1:] - \
                                               lastnetwork.node[non_edge[1]]['position'][1:])
 
-        distance = 0.1 * distance_investments + distance_risk_attitudes
+        distance = F.relu(self.relative_weight(torch.tensor([float(distance_investments)]))) + float(distance_risk_attitudes)
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, non_edge[0], non_edge[1]))
 
         epsilon_upperbound = - self.params['theta_0'] - \
                              theta_2 * (1.0 * (len(list_common_neighbors) > 0)) + \
-                             (1 / self.sparsity) * distance
+                             1. / (F.relu(self.sparsity(distance)) + 0.1)
 
         probability_non_edge = self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))
 
@@ -312,7 +305,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         distance_investments = np.linalg.norm(lastnetwork.node[edge[0]]['position'][1:] - \
                                               lastnetwork.node[edge[1]]['position'][1:])
 
-        distance = 0.1 * distance_investments + distance_risk_attitudes
+        distance = F.relu(self.relative_weight(torch.tensor([float(distance_investments)]))) + float(distance_risk_attitudes)
 
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, edge[0], edge[1]))
 
@@ -362,7 +355,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
                     product_term *= (1 / number_of_non_edges)
 
-            epsilon_upperbound = - self.params['theta_0'] + (1 / self.sparsity) * distance
+            epsilon_upperbound = - self.params['theta_0'] + 1. / (F.relu(self.sparsity(distance)) + 0.1)
 
             # epsilon_upperbound = Variable(torch.from_numpy(np.asarray([epsilon_upperbound])).type(dtype),requires_grad =False)
 
@@ -394,10 +387,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     second_product_term *= (1 / number_of_non_edges)
 
 
-            epsilon_lowerbound = - self.params['theta_0'] + (1 / self.sparsity) * distance - theta_2 * (1.0)
+            epsilon_lowerbound = - self.params['theta_0'] + .1 / (F.relu(self.sparsity(distance)) + 0.1) - theta_2 * (1.0)
             # it has too many [[[[[]]]]]
 
-            epsilon_lowerbound = np.reshape(epsilon_lowerbound, 1)[-1]  # taking epsilon_lowerbound out of [[[[[]]]]]
+            #epsilon_lowerbound = np.reshape(epsilon_lowerbound, 1)[-1]  # taking epsilon_lowerbound out of [[[[[]]]]]
 
             epsilon_lowerbound = torch.div(epsilon_lowerbound, self.params['theta_3'])
 
@@ -405,7 +398,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # epsilon_upperbound = Variable(torch.from_numpy(np.asarray([- self.params['theta_0'] +
             #                                             (1 / self.sparsity) * distance])).type(dtype),requires_grad=False)
 
-            epsilon_upperbound = - self.params['theta_0'] + (1 / self.sparsity) * distance
+            epsilon_upperbound = - self.params['theta_0'] + 1. / (F.relu(self.sparsity(distance)) + 0.1)
 
             epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
 
