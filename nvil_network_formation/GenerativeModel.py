@@ -146,10 +146,10 @@ class UtilityModel(NetworkModel):
     def __init__(self, network_params):
         super(UtilityModel, self).__init__(network_params)
         self.sparsity = nn.Linear(1, 1)
-        #self.sparsity.data = torch.FloatTensor(np.asarray([500 * np.sqrt(8 / self.params['size']) * 0.007]))
-
         self.relative_weight = nn.Linear(1, 1)
-        #self.relative_weight.data = torch.FloatTensor(np.asarray([0.1]))
+        if USE_CUDA:
+            self.sparsity = self.sparsity.cuda()
+            self.relative_weight = self.relative_weight.cuda()
 
     def set_utility_params(self, utility_params):
         r"""
@@ -189,7 +189,9 @@ class UtilityModel(NetworkModel):
         distance_investments = np.linalg.norm(self.params['network'].node[candidate_edge[0]]['position'][1:] - \
                                               self.params['network'].node[candidate_edge[1]]['position'][1:])
 
-        distance = F.relu(self.relative_weight(torch.tensor([float(distance_investments)]))) + float(distance_risk_attitudes)
+        d_investments = torch.tensor([float(distance_investments)])
+        if USE_CUDA: d_investments = d_investments.cuda()
+        distance = F.relu(self.relative_weight(d_investments)) + float(distance_risk_attitudes)
 
         list_common_neighbors = list(
             NX.common_neighbors(self.params['network'], candidate_edge[0], candidate_edge[1]))
@@ -198,7 +200,7 @@ class UtilityModel(NetworkModel):
         edge_value = self.params['theta_0'] + \
                      self.params['theta_2'] * (1.0 * (len(list_common_neighbors) > 0)) + \
                      self.potential_edge_attributes[candidate_edge] - \
-                     1. / (F.relu(self.sparsity(distance)).detach().numpy() + 0.1)
+                     1. / (F.relu(self.sparsity(distance)).cpu().detach().numpy() + 0.1)
         # print(edge_value)
         edge_value = np.reshape(edge_value, 1)[-1]
         # print(edge_value.data)
@@ -277,7 +279,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
         distance_investments = np.linalg.norm(lastnetwork.node[non_edge[0]]['position'][1:] - \
                                               lastnetwork.node[non_edge[1]]['position'][1:])
 
-        distance = F.relu(self.relative_weight(torch.tensor([float(distance_investments)]))) + float(distance_risk_attitudes)
+        d_investments = torch.tensor([float(distance_investments)])
+        if USE_CUDA: d_investments = d_investments.cuda()
+        distance = F.relu(self.relative_weight(d_investments)) + float(distance_risk_attitudes)
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, non_edge[0], non_edge[1]))
 
         epsilon_upperbound = - self.params['theta_0'] - \
@@ -305,7 +309,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
         distance_investments = np.linalg.norm(lastnetwork.node[edge[0]]['position'][1:] - \
                                               lastnetwork.node[edge[1]]['position'][1:])
 
-        distance = F.relu(self.relative_weight(torch.tensor([float(distance_investments)]))) + float(distance_risk_attitudes)
+        d_investments = torch.tensor([float(distance_investments)])
+        if USE_CUDA: d_investments = d_investments.cuda()
+        distance = F.relu(self.relative_weight(d_investments)) + float(distance_risk_attitudes)
 
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, edge[0], edge[1]))
 
