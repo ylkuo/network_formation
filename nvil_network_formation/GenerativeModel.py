@@ -462,10 +462,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
         assert not math.isnan(log_density), "log_density is nan!!!"
         return log_density #torch.squeeze(torch.stack(log_density))
 
-    def get_log_marginal_probability(self, Y, n_samples=100):
+    def get_log_marginal_probability(self, Y, n_samples=150):
         '''Use numerical integration to get the marginal probability of the observed data.'''
         # written for uniform prior can be extended to other priors.
-
+        assert n_samples<=150, "large n_samples lead to numerical errors"
         uniform_prior = 1 / settings.support
 
         integration_points = np.linspace(settings.class_values[0], settings.class_values[-1], n_samples)

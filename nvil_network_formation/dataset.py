@@ -25,6 +25,20 @@ class NetworkDataset(object):
             sum_of_time_series_lengths += len(self.ysamp[i]['network'])
         return sum_of_time_series_lengths/self.len
 
+    def get_avg_log_marginal_probability(self):
+        sum_of_log_marginal_probabilities = 0
+        num_of_inf = 0
+        for i in range(self.len):
+            jjj = self.network_formation.get_log_marginal_probability(self.ysamp[i])
+            print(jjj)
+            if jjj == float('-inf'):
+                print('warning: -inf value encountered and replaced by -200 in '
+                      'ELBO avg marginal probability upperbound')
+                jjj[0] = -200.0
+            sum_of_log_marginal_probabilities += \
+                jjj
+        return sum_of_log_marginal_probabilities/self.len
+
 
 
 
@@ -33,6 +47,7 @@ class NetworkIterator(object):
         self.dataset = dataset
         self.batch_size = batch_size
         self.current = 0
+        print('this is used')
 
     def __iter__(self):
         return self
