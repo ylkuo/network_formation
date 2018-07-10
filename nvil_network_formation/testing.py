@@ -17,8 +17,13 @@ from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=500)
+    dataset = NetworkDataset(N=400)
     # print(dataset.get_avg_length_time_series())
+
+    avg_log_marginal_probability = dataset.get_avg_log_marginal_probability()
+
+    print(avg_log_marginal_probability)
+
     # exit(0)
 
     # training_samples = Simulations_Dataset(n_iters, features, labels)
@@ -68,10 +73,12 @@ if __name__ == '__main__':
     if settings.is_train:
         # plot ELBO
         fig = plt.figure()
-        plt.plot(costs)
+        plt.plot(costs,label='ELBO')
+        plt.plot([np.asarray(avg_log_marginal_probability)]*len(costs), label='avg log-marginal')
         plt.axis('tight')
         plt.xlabel('iteration')
         plt.ylabel('ELBO\n(averaged over minibatch)')
+        plt.legend()
         if settings.show_fig: plt.show()
         if settings.save_fig: fig.savefig(settings.save_model_path + 'elbo.png')
 
