@@ -286,7 +286,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         epsilon_upperbound = - self.params['theta_0'] - \
                              theta_2 * (1.0 * (len(list_common_neighbors) > 0)) + \
-                             1. / (F.relu(self.sparsity(distance)) + 0.1)
+                             1.0 / (F.relu(self.sparsity(distance)) + 0.1)
 
         probability_non_edge = self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))
 
@@ -340,7 +340,6 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     break
         else:  # common_neighbors never obtained
             common_neighbor_time = len(network_time_series)+1
-
 
         assert common_neighbor_time != formation_time, "three edges of a triangle are formed at the same time!!!"
 
@@ -430,6 +429,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
         #log_density = []
         #for count in range(1): #range(Y.shape[0]):
         X = theta_val
+        # print(X)
         network_time_series = Y['network'] #[count]['network']
         last_network = network_time_series[-1]
         unformed_edges = NX.non_edges(last_network)
@@ -452,14 +452,48 @@ class NetworkFormationGenerativeModel(UtilityModel):
         # print('X',X)
         # print('pi', self.pi)
         # print('self.pi[X]', self.pi[X])
-        log_density = (LogDensityVeci + torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype),
-                                                           requires_grad=True))) #  #/total_edges # /total_edges X[count]
+        log_density = (LogDensityVeci +
+                       torch.log(Variable(torch.from_numpy(np.asarray([1/settings.support])).type(dtype)
+                                          , requires_grad=True))) #  #/total_edges # /total_edges X[count]
 
         # print('log_density',log_density)
         if math.isnan(log_density):
             print('theta_val:', theta_val)
         assert not math.isnan(log_density), "log_density is nan!!!"
         return log_density #torch.squeeze(torch.stack(log_density))
+
+    def get_log_marginal_probability(self, Y, n_samples=100):
+        '''Use numerical integration to get the marginal probability of the observed data.'''
+        # written for uniform prior can be extended to other priors.
+
+        uniform_prior = 1 / settings.support
+
+        integration_points = np.linspace(settings.class_values[0], settings.class_values[-1], n_samples)
+
+        log_prior = [np.log(uniform_prior)] * len(integration_points)
+
+        # print('log_prior',log_prior)
+
+        log_likelihood = np.asarray([self.evaluateLogDensity(torch.tensor([integration_points[jj]]), Y)
+                                     for jj in range(n_samples)])
+
+        # print('log_likelihood', log_likelihood)
+
+        # print('log_likelihood',log_likelihood)
+
+        marginal_probability_points = np.exp(log_prior + log_likelihood)
+
+        numerical_integration_width = settings.support/n_samples
+
+        # print('marginal_probability_points', marginal_probability_points)
+
+        marginal_probability = np.sum(marginal_probability_points)*numerical_integration_width
+
+        # print('marginal_probability', marginal_probability)
+        # print(np.log(marginal_probability.data))
+
+        return np.log(marginal_probability.data)
+
 
     def get_exact_posterior_samples(self, Y,n_samples=100):
         '''Use MCMC to get samples from the exact posterior. '''
