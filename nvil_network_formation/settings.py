@@ -57,3 +57,10 @@ is_train = False
 
 save_fig = False
 show_fig = True
+
+
+compute_estimates=True
+save_estimates=True
+load_estimates=False
+
+assert (not save_estimates) or compute_estimates, "cannot save estimates without computing them!"

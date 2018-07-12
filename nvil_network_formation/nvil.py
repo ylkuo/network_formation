@@ -99,65 +99,84 @@ class Estimator():
         return error, theta_estimates
 
     def get_estimates_for_true_thetas(self, true_thetas=[2,4,6], do_plot=True,
-                                      symmetric=False, do_hist=False, verbose=True):
+                                      symmetric=False,
+                                      do_hist=False,
+                                      verbose=True,
+                                      compute_estimates=settings.compute_estimates,
+                                      save_estimates=settings.save_estimates,
+                                      load_estimates=settings.load_estimates):
+        assert (not save_estimates) or compute_estimates, "cannot save estimates without computing them!"
 
-        if self.estimator_type != 'All':
-            estimated_thetas = []  # a list of theta_estimated for each true_theta
-            mean_estimated_thetas = []
-            errors = []
-            for true_theta in true_thetas:
-                if verbose:
-                    print('getting estimates for true theta:', true_theta)
-                theta_error, theta_estimates = self.get_estimates(true_theta, do_hist=do_hist)
-                estimated_thetas += [theta_estimates]
-                mean_estimated_thetas += [np.mean(theta_estimates)]
-                # print(mean_estimated_thetas[-1])
-                # print(theta_estimates)
-                # print(np.abs(theta_estimates - mean_estimated_thetas[-1]))
-                # print(np.max(np.abs(theta_estimates - mean_estimated_thetas[-1])))
-                errors += [np.max(np.abs(theta_estimates - mean_estimated_thetas[-1]))]
-                if verbose:
-                    print('true theta:', true_theta,'theta estimates:', theta_estimates)
-        elif self.estimator_type == 'All':
-            mean_estimated_thetas = np.zeros(
-                [3, len(true_thetas)])  # a list of theta_estimated for each true_theta
-            if symmetric:
-                errors = np.zeros([3, len(true_thetas)])
-                for ii in range(len(true_thetas)):
+        if compute_estimates:
+            if self.estimator_type != 'All':
+                estimated_thetas = []  # a list of theta_estimated for each true_theta
+                mean_estimated_thetas = []
+                errors = []
+                for true_theta in true_thetas:
                     if verbose:
-                        print('true theta:', true_thetas[ii])
-                    theta_error, theta_estimates = self.get_estimates(true_thetas[ii], do_hist=do_hist)
-                    for jj in range(3):
-                        mean_estimated_thetas[jj, ii] = np.mean(theta_estimates[jj])
-                        errors[jj, ii] = theta_error[jj]
+                        print('getting estimates for true theta:', true_theta)
+                    theta_error, theta_estimates = self.get_estimates(true_theta, do_hist=do_hist)
+                    estimated_thetas += [theta_estimates]
+                    mean_estimated_thetas += [np.mean(theta_estimates)]
+                    # print(mean_estimated_thetas[-1])
+                    # print(theta_estimates)
+                    # print(np.abs(theta_estimates - mean_estimated_thetas[-1]))
+                    # print(np.max(np.abs(theta_estimates - mean_estimated_thetas[-1])))
+                    errors += [np.max(np.abs(theta_estimates - mean_estimated_thetas[-1]))]
                     if verbose:
-                        print('theta estimates:', theta_estimates)
-            elif not symmetric:
-                lower_errors = np.zeros([3, len(true_thetas)])
-                upper_errors = np.zeros([3, len(true_thetas)])
-                asymmetric_errors = np.zeros([3, 2, len(true_thetas)])
-                for ii in range(len(true_thetas)):
-                    if verbose:
-                        print('true theta:', true_thetas[ii])
-                    theta_error, theta_estimates = self.get_estimates(true_thetas[ii], do_hist=do_hist)
-                    for jj in range(3):
-                        mean_estimated_thetas[jj, ii] = np.mean(theta_estimates[jj])
-                        lower_errors[jj, ii] = abs(np.min(theta_estimates[jj])
-                                                   - mean_estimated_thetas[jj, ii])
-                        upper_errors[jj, ii] = abs(np.max(theta_estimates[jj])
-                                                   - mean_estimated_thetas[jj, ii])
-                        print(asymmetric_errors[jj, 0, ii])
-                        print(asymmetric_errors[jj, 1, ii])
-                        print(lower_errors[jj, ii], upper_errors[jj, ii])
-                        asymmetric_errors[jj, 0, ii] = lower_errors[jj, ii]
-                        asymmetric_errors[jj, 1, ii] = upper_errors[jj, ii]
-                        print(asymmetric_errors)
-                    if verbose:
-                        print('theta estimates:', theta_estimates)
+                        print('true theta:', true_theta,'theta estimates:', theta_estimates)
+                    if save_estimates:
+                        pickle.dump(mean_estimated_thetas, open('./data/mean_estimated_thetas.pkl', 'wb'))
+                        pickle.dump(errors, open('./data/errors.pkl', 'wb'))
+            elif self.estimator_type == 'All':
+                mean_estimated_thetas = np.zeros(
+                    [3, len(true_thetas)])  # a list of theta_estimated for each true_theta
+                if symmetric:
+                    errors = np.zeros([3, len(true_thetas)])
+                    for ii in range(len(true_thetas)):
+                        if verbose:
+                            print('true theta:', true_thetas[ii])
+                        theta_error, theta_estimates = self.get_estimates(true_thetas[ii], do_hist=do_hist)
+                        for jj in range(3):
+                            mean_estimated_thetas[jj, ii] = np.mean(theta_estimates[jj])
+                            errors[jj, ii] = theta_error[jj]
+                        if verbose:
+                            print('theta estimates:', theta_estimates)
+                    if save_estimates:
+                        pickle.dump(mean_estimated_thetas, open('./data/mean_estimated_thetas.pkl', 'wb'))
+                        pickle.dump(errors, open('./data/errors.pkl', 'wb'))
+                elif not symmetric:
+                    lower_errors = np.zeros([3, len(true_thetas)])
+                    upper_errors = np.zeros([3, len(true_thetas)])
+                    asymmetric_errors = np.zeros([3, 2, len(true_thetas)])
+                    for ii in range(len(true_thetas)):
+                        if verbose:
+                            print('true theta:', true_thetas[ii])
+                        theta_error, theta_estimates = self.get_estimates(true_thetas[ii], do_hist=do_hist)
+                        for jj in range(3):
+                            mean_estimated_thetas[jj, ii] = np.mean(theta_estimates[jj])
+                            lower_errors[jj, ii] = abs(np.min(theta_estimates[jj])
+                                                       - mean_estimated_thetas[jj, ii])
+                            upper_errors[jj, ii] = abs(np.max(theta_estimates[jj])
+                                                       - mean_estimated_thetas[jj, ii])
+                            print(asymmetric_errors[jj, 0, ii])
+                            print(asymmetric_errors[jj, 1, ii])
+                            print(lower_errors[jj, ii], upper_errors[jj, ii])
+                            asymmetric_errors[jj, 0, ii] = lower_errors[jj, ii]
+                            asymmetric_errors[jj, 1, ii] = upper_errors[jj, ii]
+                            print(asymmetric_errors)
+                        if verbose:
+                            print('theta estimates:', theta_estimates)
+                    if save_estimates:
+                        pickle.dump(mean_estimated_thetas, open('./data/mean_estimated_thetas.pkl', 'wb'))
+                        pickle.dump(asymmetric_errors, open('./data/asymmetric_errors.pkl', 'wb'))
 
         if do_plot:
             if self.estimator_type != 'All':
                 if symmetric:
+                    if load_estimates:
+                        mean_estimated_thetas = pickle.load(open('./data/mean_estimated_thetas.pkl', 'rb'))
+                        errors = pickle.load(open('./data/errors.pkl', 'rb'))
                     fig = plt.figure()
                     plt.errorbar(true_thetas, mean_estimated_thetas, yerr=errors)
                     plt.title(self.estimator_type + 'performance')
@@ -166,6 +185,9 @@ class Estimator():
                     if settings.show_fig: plt.show()
                     if settings.save_fig: fig.savefig(settings.save_model_path + 'posterior.png')
                 else: # not symmetric
+                    if load_estimates:
+                        mean_estimated_thetas = pickle.load(open('./data/mean_estimated_thetas.pkl', 'rb'))
+                        asymmetric_errors = pickle.load(open('./data/asymmetric_errors.pkl', 'rb'))
                     lower_errors = []
                     upper_errors = []
                     for i in range(len(true_thetas)):
@@ -182,7 +204,9 @@ class Estimator():
                     if settings.save_fig: fig.savefig(settings.save_model_path + 'posterior.png')
             elif self.estimator_type == 'All':
                 if symmetric:
-                    print(mean_estimated_thetas[0])
+                    if load_estimates:
+                        mean_estimated_thetas = pickle.load(open('./data/mean_estimated_thetas.pkl', 'rb'))
+                        errors = pickle.load(open('./data/errors.pkl', 'rb'))
                     plt.figure()
                     plt.errorbar(true_thetas, mean_estimated_thetas[0], yerr=errors[0],
                                  label='posterior mean', color='r')
@@ -197,6 +221,9 @@ class Estimator():
                     plt.legend()
                     plt.show()
                 elif not symmetric:  # not symmetric
+                    if load_estimates:
+                        mean_estimated_thetas = pickle.load(open('./data/mean_estimated_thetas.pkl', 'rb'))
+                        asymmetric_errors = pickle.load(open('./data/asymmetric_errors.pkl', 'rb'))
 
                     plt.figure()
                     plt.errorbar(true_thetas, mean_estimated_thetas[0], yerr=asymmetric_errors[0],
@@ -212,7 +239,6 @@ class Estimator():
                     plt.legend()
                     if settings.show_fig: plt.show()
                     if settings.save_fig: fig.savefig(settings.save_model_path + 'posterior.png')
-
 
 class bias_correction_RNN(nn.Module):
     def __init__(self, input_size=settings.number_of_features, hidden_size=settings.n_hidden,
