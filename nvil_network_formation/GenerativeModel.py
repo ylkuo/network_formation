@@ -474,7 +474,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         # print('log_prior',log_prior)
 
-        log_likelihood = np.asarray([self.evaluateLogDensity(torch.tensor([integration_points[jj]]), Y)
+        log_likelihood = np.asarray([self.evaluateLogDensity(torch.tensor([integration_points[jj]]).type(dtype), Y)
                                      for jj in range(n_samples)])
 
         # print('log_likelihood', log_likelihood)
