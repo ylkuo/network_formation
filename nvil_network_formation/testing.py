@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=400)
+    dataset = NetworkDataset(N=2)
     # print(dataset.get_avg_length_time_series())
 
     avg_log_marginal_probability = dataset.get_avg_log_marginal_probability()
@@ -61,8 +61,8 @@ if __name__ == '__main__':
         posterior_type = 'variational'
     estimator = Estimator(model.recognition_model,
                           model.generative_model,
-                          n_samples=4,
-                          n_posterior_samples=2,
+                          n_samples=settings.n_samples,
+                          n_posterior_samples=settings.n_posterior_samples,
                           estimator_type='MAP',
                           bin_size=15,
                           which_posterior=posterior_type,
