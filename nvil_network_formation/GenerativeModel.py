@@ -146,7 +146,15 @@ class UtilityModel(NetworkModel):
     def __init__(self, network_params):
         super(UtilityModel, self).__init__(network_params)
         self.sparsity = nn.Linear(1, 1)
+        self.sparsity.weight.data.fill_(0.1*np.sqrt(8 / self.params['size']))
+        self.sparsity.bias.data.fill_(0.0)
+        # print('self.sparsity.weight.data',self.sparsity.weight.data)
+        # print('self.sparsity.weight.data', self.sparsity.bias.data)
         self.relative_weight = nn.Linear(1, 1)
+        self.relative_weight.weight.data.fill_(0.10)
+        self.relative_weight.bias.data.fill_(0.0)
+        # print('self.relative_weight.weight.data', self.sparsity.weight.data)
+        # print('self.relative_weight.bias.data', self.sparsity.bias.data)
         if USE_CUDA:
             self.sparsity = self.sparsity.cuda()
             self.relative_weight = self.relative_weight.cuda()
