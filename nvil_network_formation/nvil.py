@@ -285,6 +285,15 @@ class bias_correction_RNN(nn.Module):
 
         return output
 
+class PossitiveWeightClipper(object):
+    def __init__(self, frequency=5):
+        self.frequency = frequency
+
+    def __call__(self, module):
+        if hasattr(module, 'weight'):
+            w = module.weight.data
+            w.clamp_(0, float('inf'))
+
 class NVIL():
     def __init__(self, 
                  opt_params, # dictionary of optimization parameters
@@ -328,6 +337,7 @@ class NVIL():
         self.opt = optim.Adam(list(self.generative_model.parameters()) + list(self.recognition_model.parameters()) +
                               list(self.bias_correction.parameters()),
                               lr=learning_rate)
+        self.clipper = PossitiveWeightClipper()
 
     def get_nvil_cost(self, Y, n):
         batch_size = len(Y)
@@ -453,6 +463,7 @@ class NVIL():
         loss_C.backward(retain_graph=True)
         loss_p.backward()
         self.opt.step()
+        self.generative_model.apply(self.clipper)
 
     def update_params_ELBO(self, n, p_yh, q_hgy):
         self.opt.zero_grad()
