@@ -197,8 +197,10 @@ class UtilityModel(NetworkModel):
             NX.common_neighbors(self.params['network'], candidate_edge[0], candidate_edge[1]))
         #print('potential_edge_attributes', self.potential_edge_attributes[candidate_edge])
         #print('sparsity', self.sparsity.detach().numpy())
-        pre_edge_value = self.params['theta_2']*(1.0 * (len(list_common_neighbors) > 0)) + \
-            self.potential_edge_attributes[candidate_edge] - distance
+        pre_edge_value = torch.tensor(self.params['theta_2']*(1.0 * (len(list_common_neighbors) > 0)) + \
+                                      self.potential_edge_attributes[candidate_edge])
+        if USE_CUDA: pre_edge_value = pre_edge_value.cuda()
+        pre_edge_value = pre_edge_value - distance
         edge_value = self.sparsity(pre_edge_value).cpu().detach().numpy()
         # print(edge_value)
         edge_value = np.reshape(edge_value, 1)[-1]
