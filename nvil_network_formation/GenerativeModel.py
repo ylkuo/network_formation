@@ -72,7 +72,7 @@ class NetworkModel(nn.Module):
             # may be latent homophilic attributes?
 
         for potential_edge in potential_edge_keys:
-            self.potential_edge_attributes[potential_edge] = np.random.normal(0, self.params['theta_3'])  # latent
+            self.potential_edge_attributes[potential_edge] = np.random.normal(0, 1)  # latent
             # noise variables that derive the link formation decisions
 
     def generate_time_series(self, utility_params, suply_network_timeseries=False):  # conditioned on the fixed_params
@@ -170,18 +170,10 @@ class UtilityModel(NetworkModel):
         # print('self.params',self.params)
         # x = self.params
         # self.params = x.update(utility_params)
-        # print(self.params)
-        if 'theta_0' not in utility_params:
-            self.params['theta_0'] = 0  # np.random.normal(0, 1)
-        #if 'theta_1' not in utility_params:
-        #    self.params['theta_1'] = 0  # np.random.normal(0, 1)
 
         assert 'theta_2' in utility_params, "theta_2 is not set!"
             # self.params['theta_2'] = RD.choice(
             #     [self.params['lower_limit'], self.params['upper_limit']])  # np.random.normal(0, 1)#
-
-        if 'theta_3' not in utility_params:
-            self.params['theta_3'] = 5  # np.random.normal(0, 1)
 
         # if 'sparsity' not in utility_params:
         #     self.params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
@@ -205,10 +197,9 @@ class UtilityModel(NetworkModel):
             NX.common_neighbors(self.params['network'], candidate_edge[0], candidate_edge[1]))
         #print('potential_edge_attributes', self.potential_edge_attributes[candidate_edge])
         #print('sparsity', self.sparsity.detach().numpy())
-        edge_value = self.params['theta_0'] + \
-                     self.params['theta_2'] * (1.0 * (len(list_common_neighbors) > 0)) + \
-                     self.potential_edge_attributes[candidate_edge] - \
-                     1. / (F.relu(self.sparsity(distance)).cpu().detach().numpy() + 0.1)
+        pre_edge_value = self.params['theta_2']*(1.0 * (len(list_common_neighbors) > 0)) + \
+            self.potential_edge_attributes[candidate_edge] - distance
+        edge_value = self.sparsity(pre_edge_value).cpu().detach().numpy()
         # print(edge_value)
         edge_value = np.reshape(edge_value, 1)[-1]
         # print(edge_value.data)
@@ -292,11 +283,11 @@ class NetworkFormationGenerativeModel(UtilityModel):
         distance = F.relu(self.relative_weight(d_investments)) + float(distance_risk_attitudes)
         list_common_neighbors = list(NX.common_neighbors(lastnetwork, non_edge[0], non_edge[1]))
 
-        epsilon_upperbound = - self.params['theta_0'] - \
-                             theta_2 * (1.0 * (len(list_common_neighbors) > 0)) + \
-                             1.0 / (F.relu(self.sparsity(distance)) + 0.1)
+        epsilon_upperbound = (self.sparsity.bias / self.sparsity.weight) \
+                              + distance \
+                              - theta_2 * (1.0 * (len(list_common_neighbors) > 0))
 
-        probability_non_edge = self.normal_cdf(torch.div(epsilon_upperbound, self.params['theta_3']))
+        probability_non_edge = self.normal_cdf(epsilon_upperbound)
 
         # print('probability_non_edge',probability_non_edge)
 
@@ -368,12 +359,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
                     product_term *= (1 / number_of_non_edges)
 
-            epsilon_upperbound = - self.params['theta_0'] + 1. / (F.relu(self.sparsity(distance)) + 0.1)
-
-            # epsilon_upperbound = Variable(torch.from_numpy(np.asarray([epsilon_upperbound])).type(dtype),requires_grad =False)
-
-            epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
-
+            epsilon_upperbound = -self.sparsity.bias / self.sparsity.weight + distance
             probability_of_the_edge = product_term*self.normal_cdf(epsilon_upperbound)
 
             # print('product_term',product_term)
@@ -400,30 +386,20 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     second_product_term *= (1 / number_of_non_edges)
 
 
-            epsilon_lowerbound = - self.params['theta_0'] + .1 / (F.relu(self.sparsity(distance)) + 0.1) - theta_2 * (1.0)
+            epsilon_lowerbound = -self.sparsity.bias / self.sparsity.weight \
+                                 + distance - theta_2
             # it has too many [[[[[]]]]]
 
-            #epsilon_lowerbound = np.reshape(epsilon_lowerbound, 1)[-1]  # taking epsilon_lowerbound out of [[[[[]]]]]
-
-            epsilon_lowerbound = torch.div(epsilon_lowerbound, self.params['theta_3'])
-
-
-            # epsilon_upperbound = Variable(torch.from_numpy(np.asarray([- self.params['theta_0'] +
-            #                                             (1 / self.sparsity) * distance])).type(dtype),requires_grad=False)
-
-            epsilon_upperbound = - self.params['theta_0'] + 1. / (F.relu(self.sparsity(distance)) + 0.1)
-
-            epsilon_upperbound = torch.div(epsilon_upperbound, self.params['theta_3'])
+            epsilon_upperbound = -self.sparsity.bias / self.sparsity.weight + distance
 
             probability_of_the_edge = (second_product_term * (self.normal_cdf(epsilon_upperbound) -
-                                                             self.normal_cdf(epsilon_lowerbound))) + \
+                                                              self.normal_cdf(epsilon_lowerbound))) + \
                                       (first_product_term * (1 - self.normal_cdf(epsilon_upperbound)))
 
             # print('first_product_term', first_product_term)
             # print('second_product_term', second_product_term)
 
             # print('probability_of_the_edge case 3',probability_of_the_edge)
-
 
         return probability_of_the_edge
 
