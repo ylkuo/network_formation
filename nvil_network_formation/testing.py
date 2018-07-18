@@ -17,8 +17,8 @@ from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     # load dataset
-    dataset = NetworkDataset(N=2)
-    # print(dataset.get_avg_length_time_series())
+    dataset = NetworkDataset(N=10)
+    print(dataset.get_avg_length_time_series())
 
     avg_log_marginal_probability = dataset.get_avg_log_marginal_probability()
 
@@ -63,10 +63,10 @@ if __name__ == '__main__':
                           model.generative_model,
                           n_samples=settings.n_samples,
                           n_posterior_samples=settings.n_posterior_samples,
-                          estimator_type='MAP',
+                          estimator_type='All',
                           bin_size=15,
                           which_posterior=posterior_type,
-                          error_type='MAE')
+                          error_type='MSE')
     estimator.get_estimates_for_true_thetas(true_thetas, do_plot=True,
                                             symmetric=True, do_hist=False)
 
@@ -74,6 +74,7 @@ if __name__ == '__main__':
         # plot ELBO
         fig = plt.figure()
         plt.plot(costs,label='ELBO')
+        print([np.asarray(avg_log_marginal_probability)]*len(costs))
         plt.plot([np.asarray(avg_log_marginal_probability)]*len(costs), label='avg log-marginal')
         plt.axis('tight')
         plt.xlabel('iteration')

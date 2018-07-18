@@ -171,8 +171,8 @@ class UtilityModel(NetworkModel):
         # x = self.params
         # self.params = x.update(utility_params)
 
-        assert 'theta_2' in utility_params, "theta_2 is not set!"
-            # self.params['theta_2'] = RD.choice(
+        assert 'theta' in utility_params, "theta is not set!"
+            # self.params['theta'] = RD.choice(
             #     [self.params['lower_limit'], self.params['upper_limit']])  # np.random.normal(0, 1)#
 
         # if 'sparsity' not in utility_params:
@@ -197,7 +197,7 @@ class UtilityModel(NetworkModel):
             NX.common_neighbors(self.params['network'], candidate_edge[0], candidate_edge[1]))
         #print('potential_edge_attributes', self.potential_edge_attributes[candidate_edge])
         #print('sparsity', self.sparsity.detach().numpy())
-        pre_edge_value = torch.tensor(self.params['theta_2']*(1.0 * (len(list_common_neighbors) > 0)) + \
+        pre_edge_value = torch.tensor(self.params['theta']*(1.0 * (len(list_common_neighbors) > 0)) + \
                                       self.potential_edge_attributes[candidate_edge])
         if USE_CUDA: pre_edge_value = pre_edge_value.cuda()
         pre_edge_value = pre_edge_value - distance
@@ -222,14 +222,13 @@ class NetworkFormationGenerativeModel(UtilityModel):
             self.prior_un = np.asarray(GenerativeParams['prior'])
         else:
             # self.prior_un = nn.Parameter(torch.FloatTensor(np.asarray(100*np.ones(settings.number_of_classes))), requires_grad=True)
-            self.prior_un = np.linspace(settings.class_values[0]-1,settings.class_values[-1]+1,100)
-            # what is the 100*??? should n't it be np.ones(xDim)
+            self.prior_un = np.linspace(settings.class_values[0]-1, settings.class_values[-1]+1, 100)
         self.prior = self.prior_un#/(settings.support)
         # print('self.pi in init NetFormationGenModel',self.pi)
 
     def get_y(self, theta):
-        utility_params = dict().fromkeys(['theta_2'])
-        utility_params['theta_2'] = theta
+        utility_params = dict().fromkeys(['theta'])
+        utility_params['theta'] = theta
         degrees_df, networks = self.generate_time_series(utility_params, suply_network_timeseries=True)
         dummy1 = copy.copy(networks)
         #y_vals[ii]['network'] = copy.deepcopy(dummy1)
@@ -266,12 +265,9 @@ class NetworkFormationGenerativeModel(UtilityModel):
         z = torch.div(value, math.sqrt(2))
         return 0.5 * (1 + torch.erf(z.type(dtype)))
 
-    def non_edge_probability(self, non_edge, lastnetwork, theta_2):
-        utility_params = dict.fromkeys(['theta_0','theta_1','theta_2','theta_3','sparsity'])
-        utility_params['theta_0'] = 0
-        utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 5
-        utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
+    def non_edge_probability(self, non_edge, lastnetwork, theta):
+        utility_params = dict.fromkeys(['theta'])
+        utility_params['theta'] = theta
         self.set_utility_params(utility_params)
 
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[non_edge[0]]['position'][0] - \
@@ -287,7 +283,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         epsilon_upperbound = (self.sparsity.bias / self.sparsity.weight) \
                               + distance \
-                              - theta_2 * (1.0 * (len(list_common_neighbors) > 0))
+                              - theta * (1.0 * (len(list_common_neighbors) > 0))
 
         probability_non_edge = self.normal_cdf(epsilon_upperbound)
 
@@ -295,13 +291,10 @@ class NetworkFormationGenerativeModel(UtilityModel):
 
         return probability_non_edge
 
-    def edge_probability(self, edge, network_time_series, lastnetwork, theta_2):
+    def edge_probability(self, edge, network_time_series, lastnetwork, theta):
         # print('we are here')
-        utility_params = dict.fromkeys(['theta_0', 'theta_1', 'theta_2', 'theta_3', 'sparsity'])
-        utility_params['theta_0'] = 0
-        utility_params['theta_2'] = theta_2
-        utility_params['theta_3'] = 5
-        utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
+        utility_params = dict.fromkeys(['theta'])
+        utility_params['theta'] = theta
         self.set_utility_params(utility_params)
 
         distance_risk_attitudes = np.linalg.norm(lastnetwork.node[edge[0]]['position'][0] - \
@@ -387,9 +380,8 @@ class NetworkFormationGenerativeModel(UtilityModel):
                     number_of_non_edges = len(list(NX.non_edges(network_time_series[i])))
                     second_product_term *= (1 / number_of_non_edges)
 
-
             epsilon_lowerbound = -self.sparsity.bias / self.sparsity.weight \
-                                 + distance - theta_2
+                                 + distance - theta
             # it has too many [[[[[]]]]]
 
             epsilon_upperbound = -self.sparsity.bias / self.sparsity.weight + distance
@@ -446,12 +438,12 @@ class NetworkFormationGenerativeModel(UtilityModel):
         if math.isnan(log_density):
             print('theta_val:', theta_val)
         assert not math.isnan(log_density), "log_density is nan!!!"
-        return log_density #torch.squeeze(torch.stack(log_density))
+        return torch.squeeze(log_density) # squeeze is to remove extra []
 
-    def get_log_marginal_probability(self, Y, n_samples=150):
+    def get_log_marginal_probability(self, Y, n_samples=100):
         '''Use numerical integration to get the marginal probability of the observed data.'''
         # written for uniform prior can be extended to other priors.
-        assert n_samples<=150, "large n_samples lead to numerical errors"
+        assert n_samples<=100, "large n_samples lead to numerical errors in get_log_marginal_probability"
         uniform_prior = 1 / settings.support
 
         integration_points = np.linspace(settings.class_values[0], settings.class_values[-1], n_samples)
@@ -459,21 +451,26 @@ class NetworkFormationGenerativeModel(UtilityModel):
         log_prior = [np.log(uniform_prior)] * len(integration_points)
 
         # print('log_prior',log_prior)
+        #
+        # print(Y)
+        #
+        # print(torch.tensor([integration_points[10]]).type(dtype))
 
         log_likelihood = np.asarray([self.evaluateLogDensity(torch.tensor([integration_points[jj]]).type(dtype), Y)
                                      for jj in range(n_samples)])
 
-        # print('log_likelihood', log_likelihood)
+        print('log_likelihood', log_likelihood)
 
-        # print('log_likelihood',log_likelihood)
+        numerical_integration_width = settings.support / n_samples
 
-        marginal_probability_points = np.exp(log_prior + log_likelihood)
+        marginal_probability_points = np.exp(log_prior + log_likelihood)*numerical_integration_width
 
-        numerical_integration_width = settings.support/n_samples
+        print(marginal_probability_points)
+
 
         # print('marginal_probability_points', marginal_probability_points)
 
-        marginal_probability = np.sum(marginal_probability_points)*numerical_integration_width
+        marginal_probability = np.sum(marginal_probability_points)
 
         # print('marginal_probability', marginal_probability)
         # print(np.log(marginal_probability.data))
@@ -484,13 +481,15 @@ class NetworkFormationGenerativeModel(UtilityModel):
     def get_exact_posterior_samples(self, Y,n_samples=100):
         '''Use MCMC to get samples from the exact posterior. '''
 
-        infer_theta = mc.Uniform('infer_theta', settings.class_values[0],
-                                   settings.class_values[-1])  # this is the prior on the quality
+        infer_theta = mc.Uniform('infer_theta', settings.class_values[0]-1,
+                                   settings.class_values[-1]+1)  # this is the prior on the quality
 
         data = Y['network']
 
-        @mc.stochastic(observed=True)
-        def network_likelihood_model(value=data,infer_theta=infer_theta):
+
+        # @mc.stochastic(observed=True)
+        @mc.deterministic
+        def network_likelihood_model(infer_theta=infer_theta):
             # print('infer_theta:', infer_theta.tolist())
             X = Variable(torch.from_numpy(np.asarray([infer_theta.tolist()])).type(dtype),requires_grad=False)
             # print('data:', data)
@@ -518,7 +517,7 @@ class NetworkFormationGenerativeModel(UtilityModel):
             # print('log_likelihood',log_likelihood)
             return log_likelihood.data.cpu().numpy()
 
-        posterior_samples = np.zeros(n_samples)
+
 
         #  MCMC
 

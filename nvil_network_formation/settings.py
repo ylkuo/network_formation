@@ -43,9 +43,9 @@ class_values = [2, 4, 6]  # list(range(number_of_classes))
 
 support = class_values[-1] - class_values[0] + 2
 
-use_exact_posterior = True
-n_posterior_samples = 750
-n_samples = 10
+use_exact_posterior = False
+n_posterior_samples = 10
+n_samples = 3
 
 load_model = False
 load_model_path = './data/model_2000/'
@@ -53,9 +53,9 @@ save_model_path = './data/model_3000/'
 
 use_ELBO_cost = False
 
-is_train = False
+is_train = True
 
-save_fig = False
+save_fig = True
 show_fig = True
 
 
