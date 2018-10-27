@@ -3,6 +3,7 @@ import torch.optim as optim
 import settings
 
 from dataset import *
+from estimator import Estimator
 from inference_net import *
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
@@ -56,5 +57,9 @@ if __name__ == '__main__':
         torch.save(model, settings.model_prefix + settings.model_name)
     else:
         model = torch.load(settings.model_prefix + settings.model_name)
-        model.cuda()
+        if settings.use_gpu:
+            model.cuda()
     model.eval()
+    estimator = Estimator(model, n_samples=settings.n_eval_theta_samples,
+                          estimator_type=settings.estimator_type)
+    estimator.get_estimates(settings.n_eval_thetas)
