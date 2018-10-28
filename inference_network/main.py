@@ -29,22 +29,32 @@ def train():
                                 collate_fn=PadCollate(dim=0))
         # train
         model.train()
+        n_batches = 0
+        batch_loss = 0
         for j, (degrees, thetas) in enumerate(train_loader):
             proposal = model.forward(degrees)
             loss = proposal.log_prob(thetas)
-            batch_loss = -torch.sum(loss) / degrees.size()[0]
+            loss = -torch.sum(loss) / degrees.size()[0]
             optimizer.zero_grad()
-            batch_loss.backward()
+            loss.backward()
             optimizer.step()
-            print('epoch %d, iter %d, loss: %f' % (i, j, float(batch_loss)))
+            batch_loss += loss
+            print('epoch %d, iter %d, loss: %f' % (i, j, float(loss)))
+            n_batches += 1
+        batch_loss /= n_batches
         writer.add_scalar('loss/train', float(batch_loss), i)
         # validation
         model.eval()
+        n_batches = 0
+        batch_loss = 0
         for j, (degrees, thetas) in enumerate(val_loader):
             proposal = model.forward(degrees)
             loss = proposal.log_prob(thetas)
-            batch_loss = -torch.sum(loss) / degrees.size()[0]
-            writer.add_scalar('loss/validate', float(batch_loss), i)
+            loss = -torch.sum(loss) / degrees.size()[0]
+            batch_loss += loss
+            n_batches += 1
+        batch_loss /= n_batches
+        writer.add_scalar('loss/validate', float(batch_loss), i)
         if i > 0 and i % settings.checkpoint_range == 0:
             torch.save(model, settings.model_prefix + '/formation_' + str(i) + '.model')
         torch.save(model, settings.model_prefix + '/formation_' + str(settings.n_epochs) + '.model')
