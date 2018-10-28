@@ -24,9 +24,9 @@ class TimeSeriesEmbedding(nn.Module):
         return output, hidden
 
 
-class ProposalNormal(nn.Module):
+class ProposalNormalNormal(nn.Module):
     def __init__(self, input_dim, output_dim=1):
-        super(ProposalNormal, self).__init__()
+        super(ProposalNormalNormal, self).__init__()
         self._output_dim = output_dim
         self._lin1 = nn.Linear(input_dim, input_dim)
         self._lin2 = nn.Linear(input_dim, self._output_dim * 2)
@@ -50,7 +50,7 @@ class InferenceNetwork(nn.Module):
         super(InferenceNetwork, self).__init__()
         self.ts_embedding = TimeSeriesEmbedding(settings.n_features, settings.hidden_dim,
                                                 settings.rnn_depth, settings.embedding_dim)
-        self.proposal_layer = ProposalNormal(settings.embedding_dim)
+        self.proposal_layer = ProposalNormalNormal(settings.embedding_dim)
 
     def forward(self, input):
         proposal_input, _ = self.ts_embedding(input)

@@ -7,14 +7,20 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 class NetworkDataset(Dataset):
-    def __init__(self, n_theta, size_per_theta=20):
+    def __init__(self, n_theta, size_per_theta=20, prior_type='normal'):
         self.networks = []
+        self.prior_type = prior_type
         for _ in range(n_theta):
             self.sample_theta(size_per_theta)
 
     def sample_theta(self, size_per_theta):
-        theta = np.random.uniform(settings.gen_model_params['theta_range'][0],
-                                  settings.gen_model_params['theta_range'][1])
+        if self.prior_type == 'normal':
+            theta = np.random.normal(settings.prior_mean, settings.prior_stddev)
+        elif self.prior_type == 'uniform':
+            theta = np.random.uniform(settings.gen_model_params['theta_range'][0],
+                                      settings.gen_model_params['theta_range'][1])
+        else:
+            assert False, 'Unsupported distribution for data generation.'
         for n in range(size_per_theta):
             model = GenerativeModel(settings.gen_model_params)
             network = dict().fromkeys(('theta', 'degrees'))
