@@ -36,7 +36,8 @@ class Estimator(object):
             else:
                 proposal = self.inference_network.forward(degrees)
                 if self.estimator_type == 'posterior_mean':
-                    theta_estimates[i] = proposal.mean.data[0]
+                    theta_estimates[i] = proposal.mean_non_truncated.data[0]
+                    print(theta, proposal.mean_non_truncated.data[0], proposal.stddev_non_truncated.data[0])
                 else:
                     assert False, 'Do not support other estimate types if do_sample is False.'
         error = 0

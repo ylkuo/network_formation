@@ -21,17 +21,17 @@ n_features = gen_model_params['size']
 hidden_dim = 32
 rnn_depth = 2
 embedding_dim = 32
-prior_mean = 3
-prior_stddev = 1
+prior_low = gen_model_params['theta_range'][0]
+prior_high = gen_model_params['theta_range'][1]
 
 # Settings for training
 n_train = 200
 n_validation = 20
 size_per_theta_train = 20
-n_epochs = 500
+n_epochs = 1000
 lr = 0.0001
 weight_decay=0.00005
-is_train = False
+is_train = True
 
 # Settings for saving/loading models
 model_prefix = 'model/'
