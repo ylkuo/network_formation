@@ -44,3 +44,7 @@ show_fig = True
 estimator_type = 'posterior_mean'
 n_eval_thetas = 40
 n_eval_theta_samples = 10
+
+# Settings for debugging
+save_network_img = False
+img_prefix = 'images/'

@@ -1,7 +1,9 @@
 import copy
 import networkx as nx
 import numpy as np
+import os
 import pandas as pd
+import pylab as pl
 import random as rd
 import settings
 
@@ -31,6 +33,7 @@ class GenerativeModel(object):
         # set edge attributes
         for potential_edge in potential_edge_keys:
             # noise variables that derive the link formation decisions
+            # try (0,0.01)
             self.potential_edge_attributes[potential_edge] = np.random.normal(0, 1)  # latent
 
     def set_utility_params(self, utility_params):
@@ -49,16 +52,39 @@ class GenerativeModel(object):
                 self.pairwise_stable = False
                 break
 
+    def draw(self, t):
+        pl.cla()
+        nx.draw(self.params['network'],
+                pos=self.params['positions'],
+                node_color=[0 for i in self.params['network'].nodes()],
+                with_labels=False,
+                edge_color='c',
+                cmap=pl.cm.YlOrRd,
+                vmin=0,
+                vmax=1)
+        pl.axis('image')
+        pl.title('t = ' + str(t))
+        img_path = settings.img_prefix + '/theta_' + str(self.params['theta'])
+        pl.savefig(img_path + '/' + str(t) + '.png')
+
     def generate_time_series(self, utility_params, suply_network_timeseries=False):
         self.init_network()
         self.set_utility_params(utility_params)
         self.init_network_attributes()
+        if settings.save_network_img:
+            img_path = settings.img_prefix + '/theta_' + str(self.params['theta'])
+            if not os.path.isdir(img_path):
+                os.mkdir(img_path)
         # generate time series
         network_timeseries = []
+        t = 0
         while not self.pairwise_stable:
             dummy_network = self.params['network'].copy()
             network_timeseries.append(dummy_network)
             self.step()
+            t += 1
+            if settings.save_network_img:
+                self.draw(t)
         # turning time series to degree sequence
         if self.params['input_type'] == 'degree_sequence':
             all_nodes_degrees = list(
@@ -66,6 +92,7 @@ class GenerativeModel(object):
                                                   network_timeseries)), self.params['network'].nodes()))
             df = pd.DataFrame(np.transpose(all_nodes_degrees))
         self.pairwise_stable = False
+
         if suply_network_timeseries:
             return df, network_timeseries
         else:
