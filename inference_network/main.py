@@ -10,9 +10,10 @@ from torch.utils.data import DataLoader
 
 def train():
     # generate training and validation datasets
-    train_data = NetworkDataset(settings.n_train)
+    train_data = NetworkDataset(n_theta=settings.n_train,
+                                size_per_theta=settings.size_per_theta_train)
     print('Generated training data:', len(train_data))
-    val_data = NetworkDataset(settings.n_validation)
+    val_data = NetworkDataset(n_theta=settings.n_validation, size_per_theta=5)
     print('Generated validation data:', len(val_data))
     # init network
     model = InferenceNetwork()
@@ -23,9 +24,10 @@ def train():
     optimizer = optim.Adam(model.parameters(), lr=settings.lr,
                            weight_decay=settings.weight_decay)
     for i in range(settings.n_epochs):
-        train_loader = DataLoader(train_data, batch_size=settings.size_per_theta_train,
-                              collate_fn=PadCollate(dim=0))
-        val_loader = DataLoader(val_data, batch_size=settings.size_per_theta_train,
+        train_loader = DataLoader(train_data, shuffle=True,
+                                  batch_size=settings.batch_size,
+                                  collate_fn=PadCollate(dim=0))
+        val_loader = DataLoader(val_data, batch_size=settings.batch_size,
                                 collate_fn=PadCollate(dim=0))
         # train
         model.train()

@@ -28,15 +28,16 @@ prior_high = gen_model_params['theta_range'][1]
 n_train = 200
 n_validation = 20
 size_per_theta_train = 20
+batch_size = 100
 n_epochs = 1000
 lr = 0.0001
-weight_decay=0.00005
+weight_decay=0.0005
 is_train = True
 
 # Settings for saving/loading models
 model_prefix = 'model/'
 model_name = 'formation.model'
-checkpoint_range = 50
+checkpoint_range = 10
 
 # Settings for evaluation plots
 save_fig = True

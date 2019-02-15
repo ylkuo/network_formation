@@ -109,15 +109,15 @@ class GenerativeModel(object):
         distance = 0.1 * distance_investments + distance_risk_attitudes
         list_common_neighbors = list(
             nx.common_neighbors(self.params['network'], candidate_edge[0], candidate_edge[1]))
-        edge_value = self.params['theta'] * (1.0 * (len(list_common_neighbors) > 0)) + \
-                     self.potential_edge_attributes[candidate_edge] - \
-                     (1 / self.params['sparsity']) * distance
+        edge_value = (1 / self.params['sparsity']) * \
+                     (self.params['theta'] * (1.0 * (len(list_common_neighbors) > 0)) - distance) + \
+                      self.potential_edge_attributes[candidate_edge]
         return edge_value > 0.0
 
     def get_y(self, theta):
         utility_params = dict().fromkeys(['theta'])
         utility_params['theta'] = theta
-        utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size']) * 0.007
+        utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size'])
         degrees_df, networks = self.generate_time_series(utility_params,
                                                          suply_network_timeseries=True)
         dummy1 = copy.copy(networks)
