@@ -18,7 +18,7 @@ class GenerativeModel(object):
         self.params['positions'] = nx.random_layout(self.params['network'])
         # set input data type to be degree sequence
         if 'input_type' not in self.params:
-            self.params['input_type'] = 'degree_sequence'
+            self.params['input_type'] = 'adjacencies' #'degree_sequence'
             self.params['feature_length'] = self.params['size']
         # TODO: init for other data type
 
@@ -91,6 +91,11 @@ class GenerativeModel(object):
                 map(lambda node_pointer: list(map(lambda network: 1.0 * (network.degree(node_pointer)),
                                                   network_timeseries)), self.params['network'].nodes()))
             df = pd.DataFrame(np.transpose(all_nodes_degrees))
+        elif self.params['input_type'] == 'adjacencies':
+            adjacencies = list(map(lambda network: 1.0 * nx.adjacency_matrix(network),network_timeseries))
+            df = adjacencies
+        else:
+            assert False, "self.params['input_type'] not recognized"
         self.pairwise_stable = False
 
         if suply_network_timeseries:
@@ -117,7 +122,7 @@ class GenerativeModel(object):
     def get_y(self, theta):
         utility_params = dict().fromkeys(['theta'])
         utility_params['theta'] = theta
-        utility_params['sparsity'] = 500 * np.sqrt(8 / self.params['size'])
+        utility_params['sparsity'] = 500 * np.sqrt(8.0 / self.params['size'])
         degrees_df, networks = self.generate_time_series(utility_params,
                                                          suply_network_timeseries=True)
         dummy1 = copy.copy(networks)

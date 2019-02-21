@@ -58,8 +58,8 @@ def train():
         batch_loss /= n_batches
         writer.add_scalar('loss/validate', float(batch_loss), i)
         if i > 0 and i % settings.checkpoint_range == 0:
-            torch.save(model, settings.model_prefix + '/formation_' + str(i) + '.model')
-        torch.save(model, settings.model_prefix + '/formation_' + str(settings.n_epochs) + '.model')
+            torch.save(model, settings.model_prefix + 'formation_' + str(i) + '.model')
+        torch.save(model, settings.model_prefix + 'formation_' + str(settings.n_epochs) + '.model')
     return model
 
 
