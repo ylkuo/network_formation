@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sp
 import settings
 import torch
 
@@ -6,6 +7,7 @@ if not settings.show_fig:
     import matplotlib
     matplotlib.use('Agg')
 
+from dataset import normalize_adj
 from generative_model import GenerativeModel
 from matplotlib import pyplot as plt
 
@@ -26,15 +28,25 @@ class Estimator(object):
         model = GenerativeModel(settings.gen_model_params)
         theta_estimates = np.zeros(self.n_samples)
         for i in range(self.n_samples):
-            network = dict().fromkeys(('theta', 'degrees'))
-            _, network['degrees'] = model.get_y(theta)
-            degrees = torch.tensor(network['degrees']).type(settings.dtype)
-            degrees = degrees.unsqueeze(0)
+            network = dict().fromkeys(('theta', 'in_sequence'))
+            _, in_sequences, features = model.get_y(theta)
+            seq_lengths = torch.LongTensor([len(in_sequences)])
+            if settings.gen_model_params['input_type'] == 'adjacencies':
+                norm_adj = []
+                for adj in in_sequences:
+                    adj = normalize_adj(adj + sp.eye(adj.shape[0]))
+                    norm_adj.append(np.array(adj.todense()))
+                network['in_sequence'] = torch.tensor(norm_adj).type(settings.dtype)
+            else:
+                network['in_sequence'] = torch.tensor(in_sequences).type(settings.dtype)
+            in_sequences = network['in_sequence'].unsqueeze(0)
+            features = torch.tensor(features).type(settings.dtype)
+            features = features.unsqueeze(0)
             if self.do_sample:
                 # TODO: Add support to draw posterior samples
                 pass
             else:
-                proposal = self.inference_network.forward(degrees)
+                proposal = self.inference_network.forward(features, in_sequences, seq_lengths)
                 if self.estimator_type == 'posterior_mean':
                     theta_estimates[i] = proposal.mean_non_truncated.data[0]
                     print(theta, proposal.mean_non_truncated.data[0], proposal.stddev_non_truncated.data[0])

@@ -92,7 +92,7 @@ class GenerativeModel(object):
                                                   network_timeseries)), self.params['network'].nodes()))
             df = pd.DataFrame(np.transpose(all_nodes_degrees))
         elif self.params['input_type'] == 'adjacencies':
-            adjacencies = list(map(lambda network: 1.0 * nx.adjacency_matrix(network),network_timeseries))
+            adjacencies = list(map(lambda network: 1.0 * nx.adjacency_matrix(network), network_timeseries))
             df = adjacencies
         else:
             assert False, "self.params['input_type'] not recognized"
@@ -123,19 +123,26 @@ class GenerativeModel(object):
         utility_params = dict().fromkeys(['theta'])
         utility_params['theta'] = theta
         utility_params['sparsity'] = 500 * np.sqrt(8.0 / self.params['size'])
-        degrees_df, networks = self.generate_time_series(utility_params,
-                                                         suply_network_timeseries=True)
+        df, networks = self.generate_time_series(utility_params,
+                                                 suply_network_timeseries=True)
         dummy1 = copy.copy(networks)
-        dummy2 = copy.copy(degrees_df.values[:, 0:self.params['feature_length']])
-        return copy.deepcopy(dummy1), copy.deepcopy(dummy2)
+        if self.params['input_type'] == 'adjacencies':
+            dummy2 = copy.copy(df)
+        else:
+            dummy2 = copy.copy(df.values[:, 0:self.params['feature_length']])
+        features = []
+        for i in range(settings.n_nodes):
+            features.append(dummy1[0].node[i]['position'])
+        features = np.asarray(features)
+        return copy.deepcopy(dummy1), copy.deepcopy(dummy2), features
 
     def sample_xy(self, n):
         _prior = self.prior
         y_vals = list(range(n))
         theta_vals = list(range(n))
         for ii in range(n):
-            y_vals[ii] = dict().fromkeys(('network', 'degrees'))
+            y_vals[ii] = dict().fromkeys(('network', 'in_sequence'))
             theta_vals[ii] = np.random.uniform(self.params['theta_range'][0],
                                                self.params['theta_range'][1])
-            y_vals[ii]['network'], y_vals[ii]['degrees'] = self.get_y(theta_vals[ii])
+            y_vals[ii]['network'], y_vals[ii]['in_sequence'] = self.get_y(theta_vals[ii])
         return [theta_vals, y_vals]

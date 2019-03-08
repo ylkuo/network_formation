@@ -33,10 +33,10 @@ def train():
         model.train()
         n_batches = 0
         batch_loss = 0
-        for j, (degrees, thetas) in enumerate(train_loader):
-            proposal = model.forward(degrees)
+        for j, (in_sequences, seq_lengths, thetas, features) in enumerate(train_loader):
+            proposal = model.forward(features, in_sequences, seq_lengths)
             loss = proposal.log_prob(thetas)
-            loss = -torch.sum(loss) / degrees.size()[0]
+            loss = -torch.sum(loss)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -49,10 +49,10 @@ def train():
         model.eval()
         n_batches = 0
         batch_loss = 0
-        for j, (degrees, thetas) in enumerate(val_loader):
-            proposal = model.forward(degrees)
+        for j, (in_sequences, seq_lengths, thetas, features) in enumerate(val_loader):
+            proposal = model.forward(features, in_sequences, seq_lengths)
             loss = proposal.log_prob(thetas)
-            loss = -torch.sum(loss) / degrees.size()[0]
+            loss = -torch.sum(loss)
             batch_loss += loss
             n_batches += 1
         batch_loss /= n_batches
