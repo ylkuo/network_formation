@@ -8,6 +8,7 @@ from inference_net import *
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 
+
 def train():
     # generate training and validation datasets
     train_data = NetworkDataset(n_theta=settings.n_train,

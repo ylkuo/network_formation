@@ -172,6 +172,9 @@ class InferenceNetwork(nn.Module):
         elif settings.gen_model_params['input_type'] == 'degree_sequence':
             self.ts_embedding = TimeSeriesEmbedding(settings.n_features, settings.hidden_dim,
                                                     settings.rnn_depth, settings.embedding_dim)
+        elif settings.gen_model_params['input_type'] == 'clustering':
+            self.ts_embedding = TimeSeriesEmbedding(settings.n_features, settings.hidden_dim,
+                                                    settings.rnn_depth, settings.embedding_dim)
         else:
             raise NotImplementedError
         self.proposal_layer = ProposalUniformTruncatedNormal(settings.embedding_dim)

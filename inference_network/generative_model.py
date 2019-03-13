@@ -7,6 +7,7 @@ import pylab as pl
 import random as rd
 import settings
 
+
 class GenerativeModel(object):
     def __init__(self, params):
         self.params = copy.deepcopy(params)
@@ -91,6 +92,11 @@ class GenerativeModel(object):
                 map(lambda node_pointer: list(map(lambda network: 1.0 * (network.degree(node_pointer)),
                                                   network_timeseries)), self.params['network'].nodes()))
             df = pd.DataFrame(np.transpose(all_nodes_degrees))
+        elif self.params['input_type'] == 'clustering':
+            all_nodes_clustering = list(map(lambda node_pointer: list(
+                map(lambda network: 1.0 * nx.clustering(network, node_pointer), network_timeseries)),
+                                            self.params['network'].nodes()))
+            df = pd.DataFrame(np.transpose(all_nodes_clustering))
         elif self.params['input_type'] == 'adjacencies':
             adjacencies = list(map(lambda network: 1.0 * nx.adjacency_matrix(network), network_timeseries))
             df = adjacencies

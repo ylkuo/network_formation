@@ -15,7 +15,7 @@ gen_model_params = dict()
 gen_model_params['size'] = 10
 gen_model_params['feature_length'] = gen_model_params['size']
 gen_model_params['theta_range'] = (0, 6)
-gen_model_params['input_type'] = 'degree_sequence'  # degree_sequence, adjacencies
+gen_model_params['input_type'] = 'clustering'  # 'degree_sequence'  # degree_sequence, adjacencies
 
 # Settings for the inference network
 n_nodes = gen_model_params['size']
