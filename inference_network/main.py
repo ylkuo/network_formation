@@ -61,12 +61,12 @@ def train():
         if i > 0 and i % settings.checkpoint_range == 0:
             torch.save(model, settings.model_prefix + 'formation_' + str(i) + '.model')
         torch.save(model, settings.model_prefix + 'formation_' + str(settings.n_epochs) + '.model')
-    return model
+    return model, train_data
 
 
 if __name__ == '__main__':
     if settings.is_train:
-        model = train()
+        model, training_data = train()
         torch.save(model, settings.model_prefix + settings.model_name)
     else:
         model = torch.load(settings.model_prefix + settings.model_name)
@@ -76,3 +76,5 @@ if __name__ == '__main__':
     estimator = Estimator(model, n_samples=settings.n_eval_theta_samples,
                           estimator_type=settings.estimator_type)
     estimator.get_estimates(settings.n_eval_thetas)
+
+    estimator.get_estimates_on_data(training_data)
