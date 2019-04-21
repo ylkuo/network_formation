@@ -27,7 +27,7 @@ class NetworkDataset(Dataset):
         if self.prior_type == 'normal':
             theta = np.random.normal(settings.prior_mean, settings.prior_stddev)
         elif self.prior_type == 'uniform':
-            theta = np.random.uniform(settings.prior_low, settings.prior_high)
+            theta = np.random.uniform(settings.prior_low+0.01, settings.prior_high-0.01)
         else:
             assert False, 'Unsupported distribution for data generation.'
         for n in range(size_per_theta):

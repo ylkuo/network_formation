@@ -20,21 +20,22 @@ gen_model_params['input_type'] = 'clustering'  # 'degree_sequence'  # degree_seq
 # Settings for the inference network
 n_nodes = gen_model_params['size']
 n_features = gen_model_params['size']
-hidden_dim = 32
+hidden_dim = 100 #32
 rnn_depth = 2
-embedding_dim = 32
+embedding_dim = 200 #32
 prior_low = gen_model_params['theta_range'][0]
 prior_high = gen_model_params['theta_range'][1]
 
 # Settings for training
-n_train = 200
-n_validation = 20
-size_per_theta_train = 20
+n_train = 50 #5000 #50
+n_validation = 10
+size_per_theta_train = 100 #2 #100 #20
 batch_size = 100
-n_epochs = 1000
-lr = 0.0001
+n_epochs = 100
+lr = 0.001  # initial learning rate, we have a learning rate scheduler
 weight_decay=0.0005
 is_train = True
+load_dataset = True
 
 # Settings for saving/loading models
 model_prefix = 'model/'

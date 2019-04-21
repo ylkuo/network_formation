@@ -1,3 +1,4 @@
+import math
 import torch
 
 from torch.distributions import Normal
@@ -61,6 +62,22 @@ class TruncatedNormal(ExponentialFamily):
             exit()
         return torch.sum(lp) if sum else lp
 
+    def prob(self, value):
+        #  TODO: With the following handling of low and high bounds, the derivative is not correct for a value outside the truncation domain
+        lb = value.ge(self._low).type_as(self._low)
+        ub = value.le(self._high).type_as(self._low)
+        lp = torch.log(lb.mul(ub)) + self._standard_normal_dist.log_prob((value - self._mean_non_truncated) / self._stddev_non_truncated) - self._log_stddev_Z
+        if self._batch_length == 1:
+            lp = lp.squeeze(0)
+        if has_nan_or_inf(lp):
+            # TODO: fix this case or handle it
+            print('mean', self._mean_non_truncated)
+            print('stddev', self._stddev_non_truncated)
+            print('lp', lp)
+            print('val', value)
+            exit()
+        return torch.exp(lp)
+
     @property
     def low(self):
         return self._low
@@ -112,8 +129,11 @@ class TruncatedNormal(ExponentialFamily):
             ret = self._standard_normal_dist.icdf(self._standard_normal_cdf_alpha + rand * (self._standard_normal_cdf_beta - self._standard_normal_cdf_alpha)) * self._stddev_non_truncated + self._mean_non_truncated
             lb = ret.ge(self._low).type_as(self._low)
             ub = ret.lt(self._high).type_as(self._low)
-            outside_domain = (int(torch.sum(lb.mul(ub))) == 0)
+            outside_domain = lb.mul(ub).nonzero().numel() < lb.mul(ub).numel()
 
         if self._batch_length == 1:
             ret = ret.squeeze(0)
         return ret
+
+    def entropy_non_truncated(self):
+        return 0.5 + 0.5 * math.log(2 * math.pi) + torch.log(self._stddev_non_truncated)
