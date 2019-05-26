@@ -16,6 +16,7 @@ gen_model_params['size'] = 10
 gen_model_params['feature_length'] = gen_model_params['size']
 gen_model_params['theta_range'] = (0, 6)
 gen_model_params['input_type'] = 'clustering'  # 'degree_sequence'  # degree_sequence, adjacencies
+gen_model_params['space_between_observations'] = 6  # take every 6 points to generate the time series
 
 # Settings for the inference network
 n_nodes = gen_model_params['size']
@@ -35,7 +36,7 @@ n_epochs = 100
 lr = 0.001  # initial learning rate, we have a learning rate scheduler
 weight_decay=0.0005
 is_train = True
-load_dataset = True
+load_dataset = False
 
 # Settings for saving/loading models
 model_prefix = 'model/'

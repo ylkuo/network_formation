@@ -104,6 +104,10 @@ class GenerativeModel(object):
             assert False, "self.params['input_type'] not recognized"
         self.pairwise_stable = False
 
+        # slicing:
+        df = df[1::self.params['space_between_observations']]
+        network_timeseries = network_timeseries[1::self.params['space_between_observations']]
+
         if suply_network_timeseries:
             return df, network_timeseries
         else:
