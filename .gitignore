@@ -4,7 +4,7 @@ formation_simulator/case_3/
 .idea/
 data/
 crunchbase_analysis/data/
-
+*.pickle
 inference_network/model/
 inference_network/runs/
 
