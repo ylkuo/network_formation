@@ -5,6 +5,9 @@ formation_simulator/case_3/
 data/
 crunchbase_analysis/data/
 
+inference_network/model/
+inference_network/runs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
